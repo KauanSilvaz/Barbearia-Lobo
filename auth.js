@@ -48,7 +48,7 @@ loginForm.addEventListener('submit', async (e) => {
         await signInWithEmailAndPassword(auth, email, password);
         
         // Sucesso: Redireciona para o painel administrativo
-        window.location.href = "../home/home.html"; 
+        window.location.href = "./CLIENTE/home/home.html"; 
     } catch (error) {
         btnLogin.disabled = false;
         btnLogin.innerText = "ACESSAR PAINEL";
