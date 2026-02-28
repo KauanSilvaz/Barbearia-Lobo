@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia Lobo - Login do Barbeiro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="pagebarber.css">
+</head>
+<body class="bg-zinc-950 text-zinc-100 flex items-center justify-center h-screen selection:bg-amber-500/30">
+
+    <div class="w-full max-w-sm p-6 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl animate-slideUp">
+        <div class="flex flex-col items-center mb-8">
+            <div class="h-12 w-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center text-amber-500 mb-4">
+                <i data-lucide="scissors" class="w-6 h-6"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-widest uppercase text-center">Barbearia Lobo</h1>
+            <p class="text-xs text-zinc-500 mt-1">Acesso do Profissional</p>
+        </div>
+
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Email</label>
+                <input type="email" id="email" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors" placeholder="seu@email.com">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Senha</label>
+                <input type="password" id="password" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors" placeholder="••••••">
+            </div>
+            
+            <div id="error-msg" class="hidden text-red-500 text-xs text-center font-medium bg-red-500/10 p-2 rounded border border-red-500/20">
+                Email ou senha incorretos.
+            </div>
+
+            <button type="submit" id="btn-login" class="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 mt-2">
+                Entrar <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+        </form>
+    </div>
+
+    <script>lucide.createIcons();</script>
+    <script type="module" src="login.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso - Gestão de Barbearia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>BARBEARIA</h1>
+                <p>Acesso Restrito</p>
+            </div>
+
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" required autocomplete="email" placeholder="geral@exemplo.com">
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Palavra-passe</label>
+                    <input type="password" id="password" required autocomplete="current-password" placeholder="••••••••">
+                </div>
+
+                <div class="form-actions">
+                    <a href="#" id="forgot-password" class="link-text">Recuperar palavra-passe</a>
+                </div>
+
+                <button type="submit" class="btn-primary" id="btn-login">ACESSAR PAINEL</button>
+            </form>
+
+            <div class="footer-links">
+                <a href="../pagebarber/login.html" class="link-text text-muted">ACESSO EXCLUSIVO PARA BARBEIROS &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module" src="auth.js"></script>
+</body>
+</html>

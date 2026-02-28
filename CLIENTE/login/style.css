@@ -1,0 +1,142 @@
+:root {
+    --bg-color: #050505;
+    --surface-color: #121212;
+    --border-color: #2a2a2a;
+    --accent-color: #ffffff;
+    --text-primary: #ffffff;
+    --text-secondary: #888888;
+    --input-bg: #0f0f0f;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-image: radial-gradient(circle at 2px 2px, #1a1a1a 1px, transparent 0);
+    background-size: 40px 40px;
+}
+
+.login-wrapper {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.login-container {
+    background-color: var(--surface-color);
+    border: 2px solid var(--border-color);
+    border-radius: 4px; /* Estilo quadrado com leve arredondado */
+    padding: 48px 40px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    position: relative;
+}
+
+.login-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--accent-color);
+    border-radius: 4px 4px 0 0;
+}
+
+.login-header h1 {
+    font-family: 'Georgia', serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.login-header p {
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-align: center;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+}
+
+.input-group {
+    margin-bottom: 24px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.input-group input {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    transition: all 0.3s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--accent-color);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #cccccc;
+    transform: translateY(-2px);
+}
+
+.footer-links {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.link-text {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.link-text:hover { color: var(--accent-color); }
+
+/* Ajuste para o Pop-up do SweetAlert */
+.swal2-confirm.btn-custom {
+    background-color: var(--accent-color) !important;
+    color: #000 !important;
+    padding: 12px 30px !important;
+    font-weight: 800 !important;
+    border-radius: 4px !important;
+    text-transform: uppercase !important;
+}

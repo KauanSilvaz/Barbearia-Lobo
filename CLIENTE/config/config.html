@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia Lobo - Configurações</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="config.css">
+</head>
+<body class="selection:bg-amber-500/30 overflow-hidden h-screen flex flex-col">
+
+    <header class="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+<div class="flex-shrink-0 flex items-center">
+    <img src="../img/lobologo.jpeg" alt="Barbearia Lobo" class="h-10 w-auto cursor-pointer">
+</div>
+
+            <nav class="hidden md:flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
+    <a href="../home/home.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Agenda</a>
+    
+    <a href="../clientes/clientes.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Clientes</a>
+    <a href="../servicos/servicos.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Serviços</a>
+    <a href="../financeiro/financeiro.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Financeiro</a>
+    <a href="../config/config.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Config</a>
+</nav>
+
+            <button class="md:hidden p-2 text-zinc-400 hover:text-white">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+
+            <div class="hidden md:flex items-center gap-2 bg-zinc-900 py-1.5 px-2 rounded-full border border-zinc-800">
+               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" class="w-6 h-6 rounded-full" />
+               <span class="text-xs font-medium text-zinc-400 pr-2">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 pt-20 pb-4 px-4 max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <aside class="w-full md:w-64 flex-shrink-0 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
+            <button onclick="app.switchTab('team')" id="tab-team" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all bg-zinc-800 text-white shadow-md border border-zinc-700 w-full md:w-auto">
+                <i data-lucide="users" class="w-4 h-4 text-amber-500"></i>
+                <span class="whitespace-nowrap">Equipa & Acessos</span>
+            </button>
+            <button onclick="app.switchTab('schedule')" id="tab-schedule" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 border border-transparent w-full md:w-auto">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span class="whitespace-nowrap">Horários</span>
+            </button>
+            <button onclick="app.switchTab('company')" id="tab-company" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 border border-transparent w-full md:w-auto">
+                <i data-lucide="store" class="w-4 h-4"></i>
+                <span class="whitespace-nowrap">Dados da Empresa</span>
+            </button>
+            <button onclick="app.switchTab('gallery')" id="tab-gallery" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 border border-transparent w-full md:w-auto">
+                <i data-lucide="image" class="w-4 h-4"></i>
+                <span class="whitespace-nowrap">Galeria</span>
+            </button>
+        </aside>
+
+        <main class="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden relative">
+            <div class="h-full overflow-y-auto custom-scrollbar p-6">
+
+                <div id="section-team" class="animate-fadeIn space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Gestão de Equipa</h2>
+                            <p class="text-zinc-400 text-sm">Adicione barbeiros, recepcionistas e gerencie acessos.</p>
+                        </div>
+                        <button onclick="app.openEmployeeModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="team-grid"></div>
+                </div>
+
+                <div id="section-schedule" class="hidden animate-fadeIn space-y-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Horário de Funcionamento</h2>
+                        <p class="text-zinc-400 text-sm">Defina os dias de trabalho e pausas da barbearia.</p>
+                    </div>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold text-zinc-500 uppercase mb-3">Dias de Trabalho</label>
+                            <div class="flex flex-wrap gap-2" id="days-container"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-800">
+                            <div class="space-y-4">
+                                <label class="block text-xs font-bold text-zinc-500 uppercase">Turno Geral</label>
+                                <div class="flex gap-4 items-center">
+                                    <div class="flex-1">
+                                        <label class="text-xs text-zinc-400 mb-1 block">Abertura</label>
+                                        <input type="time" id="sched-open" value="09:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-amber-500 outline-none">
+                                    </div>
+                                    <span class="text-zinc-600">-</span>
+                                    <div class="flex-1">
+                                        <label class="text-xs text-zinc-400 mb-1 block">Fecho</label>
+                                        <input type="time" id="sched-close" value="20:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-amber-500 outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <label class="block text-xs font-bold text-zinc-500 uppercase">Pausa para Almoço</label>
+                                <div class="flex gap-4 items-center">
+                                    <div class="flex-1">
+                                        <label class="text-xs text-zinc-400 mb-1 block">Início</label>
+                                        <input type="time" id="sched-lunch-start" value="13:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-amber-500 outline-none">
+                                    </div>
+                                    <span class="text-zinc-600">-</span>
+                                    <div class="flex-1">
+                                        <label class="text-xs text-zinc-400 mb-1 block">Fim</label>
+                                        <input type="time" id="sched-lunch-end" value="14:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-amber-500 outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pt-4 flex justify-end">
+                            <button onclick="app.saveSchedule()" class="bg-zinc-100 hover:bg-white text-black px-6 py-2 rounded-lg font-bold text-sm transition-all shadow-lg active:scale-95">Salvar Horários</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="section-company" class="hidden animate-fadeIn space-y-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Dados da Empresa</h2>
+                        <p class="text-zinc-400 text-sm">Informações visíveis para o cliente.</p>
+                    </div>
+                    <form class="space-y-6 max-w-2xl" onsubmit="event.preventDefault(); app.saveCompany();">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-zinc-500 uppercase">Sobre Nós</label>
+                            <textarea id="comp-about" rows="4" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 resize-none"></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold text-zinc-500 uppercase">Telefone</label>
+                                <div class="relative">
+                                    <i data-lucide="phone" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+                                    <input type="tel" id="comp-phone" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold text-zinc-500 uppercase">Email</label>
+                                <div class="relative">
+                                    <i data-lucide="mail" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+                                    <input type="email" id="comp-email" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pt-4">
+                            <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg transition-all active:scale-95">Salvar Alterações</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="section-gallery" class="hidden animate-fadeIn space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Galeria</h2>
+                            <p class="text-zinc-400 text-sm">Mostre seu trabalho.</p>
+                        </div>
+                        <button onclick="app.uploadPhoto()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-medium border border-zinc-700 flex items-center gap-2">
+                            <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="gallery-grid"></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="employee-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950">
+                <h2 id="modal-title" class="text-lg font-bold text-zinc-100">Novo Funcionário</h2>
+                <button onclick="app.closeEmployeeModal()" class="text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="employee-form" class="p-6 space-y-4">
+    <input type="hidden" id="emp-id">
+    
+    <div class="flex items-center gap-4 mb-4 p-4 bg-zinc-950 rounded-xl border border-zinc-800">
+        <div class="relative flex-shrink-0">
+            <img id="emp-img-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=perfil" 
+                class="w-20 h-20 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800">
+            <div id="emp-img-placeholder" class="absolute inset-0 rounded-full bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 hidden">
+                <i data-lucide="user" class="w-8 h-8 text-zinc-600"></i>
+            </div>
+        </div>
+        
+        <div class="flex-1 space-y-1.5">
+            <label class="text-xs font-bold text-zinc-500 uppercase">URL da Foto de Perfil</label>
+            <div class="relative">
+                <i data-lucide="link" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+                <input type="url" id="emp-photo-url" placeholder="https://exemplo.com/foto.jpg" 
+                    class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors"
+                    oninput="app.updateEmployeePhotoPreview(this.value)">
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-1.5">
+        <label class="text-xs font-bold text-zinc-500 uppercase">Nome Completo</label>
+        <input type="text" id="emp-name" required placeholder="Ex: João Silva" 
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+            <label class="text-xs font-bold text-zinc-500 uppercase">Função</label>
+            <select id="emp-role" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
+                <option value="Barbeiro">Barbeiro</option>
+                <option value="Recepcionista">Recepcionista</option>
+                <option value="Gerente">Gerente</option>
+            </select>
+        </div>
+        <div class="space-y-1.5">
+            <label class="text-xs font-bold text-zinc-500 uppercase">Especialidade</label>
+            <input type="text" id="emp-spec" placeholder="Ex: Degradê, Barboterapia" 
+                class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+        </div>
+    </div>
+
+    <div class="space-y-1.5">
+        <label class="text-xs font-bold text-zinc-500 uppercase">Email (Login)</label>
+        <input type="email" id="emp-email" required placeholder="joao@email.com" 
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+    </div>
+
+    <div class="space-y-1.5">
+        <label class="text-xs font-bold text-zinc-500 uppercase">Senha</label>
+        <input type="password" id="emp-pass" placeholder="Mínimo 6 caracteres" 
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+    </div>
+
+    <div class="flex justify-between items-center pt-4 border-t border-zinc-800">
+        <button type="button" id="btn-delete-emp" class="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1 hidden">
+            <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
+        </button>
+        <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg font-medium shadow-lg transition-all active:scale-95">Salvar Funcionário</button>
+    </div>
+</form>
+        </div>
+    </div>
+
+    <div id="gallery-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
+        <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+            <h3 class="font-bold text-zinc-100 flex items-center gap-2">
+                <i data-lucide="image-plus" class="w-5 h-5 text-amber-500"></i> Adicionar à Galeria
+            </h3>
+            <button onclick="app.closeGalleryModal()" class="text-zinc-500 hover:text-white transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        
+        <form id="gallery-form" class="p-6 space-y-4">
+            <div id="url-preview-container" class="aspect-video w-full rounded-xl bg-zinc-950 border border-zinc-800 overflow-hidden flex items-center justify-center mb-4">
+                <img id="img-preview" src="" class="w-full h-full object-cover hidden">
+                <div id="preview-placeholder" class="text-center p-4">
+                    <i data-lucide="image" class="w-10 h-10 text-zinc-700 mx-auto mb-2"></i>
+                    <p class="text-xs text-zinc-600">O preview da imagem aparecerá aqui</p>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-zinc-500 uppercase">URL da Imagem</label>
+                <div class="relative">
+                    <i data-lucide="link" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+                    <input type="url" id="photo-url" required placeholder="https://exemplo.com/foto.jpg" 
+                        class="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors"
+                        oninput="app.updatePhotoPreview(this.value)">
+                </div>
+            </div>
+
+                <div class="space-y-4 pt-2 border-t border-zinc-800">
+    <div class="space-y-1.5">
+        <label class="text-xs font-bold text-zinc-500 uppercase">Nova Categoria</label>
+        <div class="flex gap-2">
+            <input type="text" id="new-category-name" placeholder="Ex: Degradê" 
+                class="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-600">
+            <button type="button" onclick="app.addCategory()" class="bg-zinc-800 hover:bg-zinc-700 p-2 rounded-xl border border-zinc-700">
+                <i data-lucide="plus" class="w-5 h-5 text-amber-500"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="space-y-1.5">
+        <label class="text-xs font-bold text-zinc-500 uppercase">Selecionar Categoria</label>
+        <div class="relative">
+            <i data-lucide="tag" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+            <select id="photo-category" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
+                <option value="" disabled selected>Carregando categorias...</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+            <div class="pt-2">
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <i data-lucide="upload-cloud" class="w-5 h-5"></i> Publicar na Galeria
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+<script src="config.js"></script>
+</body>
+</html>

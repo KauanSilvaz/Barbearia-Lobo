@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia Lobo - Serviços</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="servicos.css">
+</head>
+<body class="bg-zinc-950 text-zinc-100 selection:bg-amber-500/30 overflow-y-auto custom-scrollbar">
+
+    <header class="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+<div class="flex-shrink-0 flex items-center">
+    <img src="../img/lobologo.jpeg" alt="Barbearia Lobo" class="h-10 w-auto cursor-pointer">
+</div>
+
+            <nav class="hidden md:flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
+                <a href="../home/home.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Agenda</a>
+                <a href="../clientes/clientes.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Clientes</a>
+                <a href="../servicos/servicos.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Serviços</a>
+                <a href="../financeiro/financeiro.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Financeiro</a>
+                <a href="../config/config.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Config</a>
+            </nav>
+
+            <button class="md:hidden p-2 text-zinc-400 hover:text-white">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+
+            <div class="hidden md:flex items-center gap-2 bg-zinc-900 py-1.5 px-2 rounded-full border border-zinc-800">
+               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" class="w-6 h-6 rounded-full" />
+               <span class="text-xs font-medium text-zinc-400 pr-2">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 pt-24 pb-12">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Catálogo de Serviços</h1>
+                <p class="text-zinc-400 text-sm mt-1">Gerencie preços, tempos e combos promocionais.</p>
+            </div>
+            
+            <div class="flex gap-3 w-full md:w-auto">
+                <div class="bg-zinc-900 rounded-lg border border-zinc-800 p-1 flex">
+                    <button class="px-4 py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm" id="filter-all" onclick="app.filter('all')">Todos</button>
+                    <button class="px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white" id="filter-service" onclick="app.filter('service')">Serviços</button>
+                    <button class="px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white" id="filter-combo" onclick="app.filter('combo')">Combos</button>
+                </div>
+
+                <button onclick="app.openCategoryModal()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all">
+                    <i data-lucide="tags" class="w-4 h-4"></i> Categorias
+                </button>
+
+                <button onclick="app.openModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all ml-auto md:ml-0">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Novo Serviço
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center"><i data-lucide="scissors" class="w-5 h-5"></i></div>
+                <div><p class="text-xs text-zinc-500 uppercase font-bold">Serviços Ativos</p><p class="text-xl font-bold text-white" id="stat-services">0</p></div>
+            </div>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center"><i data-lucide="layers" class="w-5 h-5"></i></div>
+                <div><p class="text-xs text-zinc-500 uppercase font-bold">Combos</p><p class="text-xl font-bold text-white" id="stat-combos">0</p></div>
+            </div>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center"><i data-lucide="tag" class="w-5 h-5"></i></div>
+                <div><p class="text-xs text-zinc-500 uppercase font-bold">Em Promoção</p><p class="text-xl font-bold text-white" id="stat-promos">0</p></div>
+            </div>
+        </div>
+
+        <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </main>
+
+    <div id="service-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-slideUp flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
+                <h2 id="modal-title" class="text-xl font-bold text-zinc-100">Novo Serviço</h2>
+                <button onclick="app.closeModal()" class="text-zinc-500 hover:text-white transition-colors"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
+            </div>
+
+            <form id="service-form" class="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                <input type="hidden" id="form-id">
+                <div class="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800 w-full">
+                    <button type="button" class="flex-1 py-2 text-sm font-medium rounded-md transition-all bg-zinc-800 text-white" id="type-service" onclick="app.setType('service')">Serviço Único</button>
+                    <button type="button" class="flex-1 py-2 text-sm font-medium rounded-md transition-all text-zinc-400" id="type-combo" onclick="app.setType('combo')">Combo</button>
+                </div>
+                <input type="hidden" id="form-type" value="service">
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Nome do Item</label>
+                    <input type="text" id="form-name" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600" placeholder="Ex: Corte Degradê">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Categoria</label>
+                    <select id="form-category" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
+                        <option value="" disabled selected>Carregando categorias...</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Complexidade (PT-PT)</label>
+                    <select id="form-complexity" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
+                        <option value="facil">Fácil</option>
+                        <option value="medio">Médio</option>
+                        <option value="dificil">Difícil</option>
+                    </select>
+                </div>
+
+                <div id="combo-selection" class="hidden animate-fadeIn p-4 bg-zinc-950/50 rounded-lg border border-zinc-800 border-dashed">
+                    <label class="block text-xs font-medium text-amber-500 uppercase mb-2">Compor Combo</label>
+                    <div class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar pr-2" id="combo-items-list"></div>
+                    <div class="mt-2 text-xs text-zinc-500 text-right">Sugerido: <span id="combo-suggested-price">€ 0,00</span> | <span id="combo-suggested-time">0 min</span></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Preço (€)</label>
+                        <input type="number" id="form-price" step="0.01" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Duração (min)</label>
+                        <input type="number" id="form-duration" step="5" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-zinc-800">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="text-sm font-medium text-zinc-300">Ativar Promoção?</label>
+                        <input type="checkbox" id="form-is-promo" class="toggle-checkbox hidden"/>
+                        <label for="form-is-promo" class="relative inline-block w-10 h-5 bg-zinc-700 rounded-full cursor-pointer transition-colors" id="toggle-label-promo"></label>
+                    </div>
+                    <div id="promo-fields" class="hidden animate-fadeIn">
+                        <label class="block text-xs font-medium text-emerald-500 uppercase mb-1">Preço Promocional (€)</label>
+                        <input type="number" id="form-promo-price" step="0.01" class="w-full bg-emerald-950/20 border border-emerald-500/30 rounded-lg px-4 py-3 text-emerald-400 outline-none">
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4">
+                    <button type="button" id="btn-delete" class="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1 hidden"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-8 py-2.5 rounded-lg font-medium shadow-lg ml-auto">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="category-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
+                <h2 class="text-xl font-bold text-zinc-100">Categorias</h2>
+                <button onclick="app.closeCategoryModal()" class="text-zinc-500 hover:text-white transition-colors"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <form id="category-form" class="flex gap-2 mb-6" onsubmit="app.handleCategorySubmit(event)">
+                    <input type="hidden" id="category-form-id">
+                    <input type="text" id="category-form-name" required placeholder="Nova categoria..." class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-100 focus:outline-none focus:border-amber-600">
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-medium shadow-lg transition-all">Salvar</button>
+                </form>
+
+                <div class="space-y-2" id="category-list">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="servicos.js"></script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia Lobo - Área do Barbeiro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="pagebarber.css">
+</head>
+<body class="selection:bg-amber-500/30 overflow-hidden h-screen flex flex-col">
+
+    <header class="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex-shrink-0">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <img id="barber-photo" src="" alt="Foto" class="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 hidden object-cover">
+                <div id="barber-icon" class="h-9 w-9 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center justify-center text-amber-500">
+                    <i data-lucide="scissors" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold text-white leading-tight">Painel Barbeiro</h1>
+                    <p class="text-[10px] text-zinc-500">Bem-vindo, <span class="text-zinc-300" id="barber-name">Carregando...</span></p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="app.logout()" class="text-zinc-500 hover:text-red-400 transition-colors p-2" title="Sair">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 pt-20 pb-4 px-4 max-w-5xl mx-auto w-full flex flex-col gap-4 overflow-hidden">
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fadeIn flex-shrink-0">
+            <div class="bg-zinc-900 border border-zinc-800 p-3 rounded-xl relative overflow-hidden group">
+                <div class="absolute right-2 top-2 text-emerald-500/10"><i data-lucide="euro" class="w-8 h-8"></i></div>
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Hoje</p>
+                <p class="text-xl font-bold text-white mt-1" id="metric-today-money">€ 0,00</p>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-3 rounded-xl relative overflow-hidden group">
+                <div class="absolute right-2 top-2 text-blue-500/10"><i data-lucide="users" class="w-8 h-8"></i></div>
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Clientes Hoje</p>
+                <p class="text-xl font-bold text-white mt-1" id="metric-today-clients">0</p>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-3 rounded-xl relative overflow-hidden group">
+                <div class="absolute right-2 top-2 text-amber-500/10"><i data-lucide="wallet" class="w-8 h-8"></i></div>
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Este Mês</p>
+                <p class="text-xl font-bold text-white mt-1" id="metric-month-money">€ 0,00</p>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-3 rounded-xl relative overflow-hidden group">
+                <div class="absolute right-2 top-2 text-purple-500/10"><i data-lucide="calendar-check" class="w-8 h-8"></i></div>
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Serviços Mês</p>
+                <p class="text-xl font-bold text-white mt-1" id="metric-month-count">0</p>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-between items-center gap-3 bg-zinc-900/50 p-1.5 rounded-xl border border-zinc-800/50">
+            <div class="flex bg-zinc-950 rounded-lg p-1 w-full md:w-auto">
+                <button onclick="app.switchView('agenda')" id="tab-agenda" class="flex-1 md:flex-none px-6 py-1.5 text-sm font-medium rounded-md text-white bg-zinc-800 shadow-sm transition-all">Agenda</button>
+                <button onclick="app.switchView('history')" id="tab-history" class="flex-1 md:flex-none px-6 py-1.5 text-sm font-medium rounded-md text-zinc-500 hover:text-zinc-300 transition-all">Histórico</button>
+            </div>
+
+            <div id="date-controls" class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <button onclick="app.changeDate(-1)" class="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 transition-colors"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                <span id="current-date-display" class="text-sm font-bold text-white w-32 text-center">Hoje</span>
+                <button onclick="app.changeDate(1)" class="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 transition-colors"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+            </div>
+        </div>
+
+        <main class="flex-1 bg-zinc-900/30 border border-zinc-800 rounded-2xl overflow-hidden relative flex flex-col">
+            <div id="view-agenda" class="flex-1 flex flex-col h-full">
+                <div class="flex border-b border-zinc-800 bg-zinc-900/80 flex-shrink-0" id="grid-header"></div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar relative" id="grid-body"></div>
+            </div>
+
+            <div id="view-history" class="hidden flex-1 overflow-y-auto custom-scrollbar p-4">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-xs uppercase text-zinc-500 border-b border-zinc-800">
+                            <th class="pb-2 pl-2">Data</th>
+                            <th class="pb-2">Cliente</th>
+                            <th class="pb-2">Serviço</th>
+                            <th class="pb-2 text-right pr-2">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-list" class="text-sm"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <button onclick="app.openModal()" class="fixed bottom-6 right-6 bg-amber-500 hover:bg-amber-400 text-black w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-50 transition-transform active:scale-90">
+        <i data-lucide="plus" class="w-7 h-7"></i>
+    </button>
+
+    <div id="appointment-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950">
+                <h2 class="text-lg font-bold text-zinc-100" id="modal-title">Novo Agendamento</h2>
+                <button type="button" onclick="app.closeModal()" class="text-zinc-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="appt-form" class="p-6 space-y-4" onsubmit="event.preventDefault(); app.saveAppt();">
+                <input type="hidden" id="appt-id">
+                
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Cliente</label>
+                    <select id="appt-client" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 outline-none focus:border-amber-600"></select>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Serviço</label>
+                    <select id="appt-service" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 outline-none focus:border-amber-600"></select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Data</label>
+                        <input type="date" id="appt-date" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-white outline-none focus:border-amber-600">
+                    </div>
+                    <div>
+    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Hora</label>
+    <input type="time" id="appt-time" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-white outline-none focus:border-amber-600">
+</div>
+                </div>
+                
+                <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-zinc-800">
+                    <button type="submit" id="btn-save" class="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-lg font-bold text-sm transition-colors">Salvar Agendamento</button>
+                    
+                    <div id="edit-actions" class="grid grid-cols-2 gap-2 hidden">
+                        <button type="button" onclick="app.completeAppt()" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i data-lucide="check" class="w-4 h-4"></i> Feito</button>
+                        <button type="button" onclick="app.deleteAppt()" class="bg-red-600 hover:bg-red-500 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+   <script type="module" src="pagebarber.js"></script>
+</body>
+</html>

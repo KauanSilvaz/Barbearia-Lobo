@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia Lobo - Financeiro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <link rel="stylesheet" href="financeiro.css">
+</head>
+<body class="selection:bg-amber-500/30 overflow-y-auto custom-scrollbar">
+
+    <header class="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+<div class="flex-shrink-0 flex items-center">
+    <img src="../img/lobologo.jpeg" alt="Barbearia Lobo" class="h-10 w-auto cursor-pointer">
+</div>
+
+            <nav class="hidden md:flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
+                <a href="../home/home.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Agenda</a>
+                <a href="../clientes/clientes.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Clientes</a>
+                <a href="../servicos/servicos.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Serviços</a>
+                <a href="../financeiro/financeiro.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Financeiro</a>
+                <a href="../config/config.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Config</a>
+            </nav>
+            <button class="md:hidden p-2 text-zinc-400 hover:text-white">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+
+            <div class="hidden md:flex items-center gap-2 bg-zinc-900 py-1.5 px-2 rounded-full border border-zinc-800">
+               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" class="w-6 h-6 rounded-full" />
+               <span class="text-xs font-medium text-zinc-400 pr-2">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="pt-24 pb-12 px-4 max-w-7xl mx-auto space-y-6">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Painel Financeiro</h1>
+                <p class="text-zinc-400 text-sm mt-1">Gestão de receitas e desempenho (Histórico).</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800">
+                    <button id="btn-hoje" class="btn-periodo px-3 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Hoje</button>
+                    <button id="btn-semana" class="btn-periodo px-3 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Semana</button>
+                    <button id="btn-mes" class="btn-periodo px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm transition-colors">Este Mês</button>
+                </div>
+
+                <div class="w-px h-6 bg-zinc-800 mx-1"></div>
+                
+                <div class="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800 gap-2">
+                    <select id="export-barber-select" class="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-amber-600">
+                        <option value="todos">Todos os Barbeiros</option>
+                    </select>
+                    <button id="btn-exportar" class="px-3 py-1 text-xs font-medium rounded-md text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 flex items-center gap-1 transition-colors">
+                        <i data-lucide="download" class="w-3 h-3"></i> Exportar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fadeIn">
+            <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><i data-lucide="euro" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Faturamento (Período)</p>
+                <h3 class="text-2xl font-bold text-white" id="card-faturamento">€ 0,00</h3>
+            </div>
+
+            <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-blue-500/10 rounded-lg text-blue-500"><i data-lucide="trending-up" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Ticket Médio</p>
+                <h3 class="text-2xl font-bold text-white" id="card-ticket">€ 0,00</h3>
+            </div>
+
+            <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-amber-500/10 rounded-lg text-amber-500"><i data-lucide="shopping-bag" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Total de Serviços</p>
+                <h3 class="text-2xl font-bold text-white" id="card-servicos">0</h3>
+            </div>
+            
+            <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-purple-500/10 rounded-lg text-purple-500"><i data-lucide="users" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Clientes Únicos</p>
+                <h3 class="text-2xl font-bold text-white" id="card-clientes">0</h3>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+            <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="scissors" class="w-4 h-4 text-amber-500"></i> Faturamento por Barbeiro
+                </h3>
+                <div class="chart-container"><canvas id="barberRevenueChart"></canvas></div>
+            </div>
+
+            <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-blue-500"></i> Mix de Serviços
+                </h3>
+                <div class="chart-container"><canvas id="servicesMixChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden animate-fadeIn">
+            <div class="px-6 py-4 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-900/50">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="list-ordered" class="w-5 h-5 text-zinc-400"></i> Registo de Caixa
+                    </h3>
+                    <p class="text-xs text-zinc-500 mt-1">Histórico de pagamentos e serviços.</p>
+                </div>
+                <input type="text" id="input-busca" placeholder="Buscar Serviço, Cliente ou Barbeiro..." class="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:border-amber-600">
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table id="tabela-financeira" class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-zinc-950 text-xs uppercase text-zinc-500 font-bold border-b border-zinc-800">
+                            <th class="px-6 py-3">Data</th>
+                            <th class="px-6 py-3">ID / Transação</th>
+                            <th class="px-6 py-3">Barbeiro</th>
+                            <th class="px-6 py-3">Serviço / Cliente</th>
+                            <th class="px-6 py-3 text-right">Valor (€)</th>
+                            <th class="px-6 py-3 text-center">Status</th>
+                            <th class="px-6 py-3 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm divide-y divide-zinc-800/50" id="ledger-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="financeiro.js"></script>
+</body>
+</html>
