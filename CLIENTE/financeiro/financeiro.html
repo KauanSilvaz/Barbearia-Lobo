@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barbearia Lobo - Financeiro</title>
+    <title>Barbearia Lobo - Financeiro & Caixa</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -14,16 +14,16 @@
     
     <link rel="stylesheet" href="financeiro.css">
 </head>
-<body class="selection:bg-amber-500/30 overflow-y-auto custom-scrollbar">
+<body class="selection:bg-emerald-500/30 overflow-y-auto custom-scrollbar">
 
     <header class="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-<div class="flex-shrink-0 flex items-center">
-    <img src="../img/lobologo.jpeg" alt="Barbearia Lobo" class="h-10 w-auto cursor-pointer">
-</div>
+            <div class="flex-shrink-0 flex items-center">
+                <img src="../img/lobologo.jpeg" alt="Barbearia Lobo" class="h-10 w-auto cursor-pointer">
+            </div>
 
             <nav class="hidden md:flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
-                <a href="../home/home.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Agenda</a>
+                <a href="../home/home.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Agenda</a>
                 <a href="../clientes/clientes.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Clientes</a>
                 <a href="../servicos/servicos.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Serviços</a>
                 <a href="../financeiro/financeiro.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Financeiro</a>
@@ -44,11 +44,15 @@
         
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-white tracking-tight">Painel Financeiro</h1>
-                <p class="text-zinc-400 text-sm mt-1">Gestão de receitas e desempenho (Histórico).</p>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Painel Financeiro & Caixa</h1>
+                <p class="text-zinc-400 text-sm mt-1">Gestão de receitas, PDV e emissão de recibos.</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-abrir-caixa" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-900/20 mr-2">
+                    <i data-lucide="calculator" class="w-4 h-4"></i> Novo Lançamento
+                </button>
+
                 <div class="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800">
                     <button id="btn-hoje" class="btn-periodo px-3 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Hoje</button>
                     <button id="btn-semana" class="btn-periodo px-3 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Semana</button>
@@ -58,11 +62,11 @@
                 <div class="w-px h-6 bg-zinc-800 mx-1"></div>
                 
                 <div class="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800 gap-2">
-                    <select id="export-barber-select" class="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-amber-600">
+                    <select id="export-barber-select" class="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-emerald-600">
                         <option value="todos">Todos os Barbeiros</option>
                     </select>
-                    <button id="btn-exportar" class="px-3 py-1 text-xs font-medium rounded-md text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 flex items-center gap-1 transition-colors">
-                        <i data-lucide="download" class="w-3 h-3"></i> Exportar PDF
+                    <button id="btn-exportar" class="px-3 py-1 text-xs font-medium rounded-md text-zinc-300 hover:text-white hover:bg-zinc-800 flex items-center gap-1 transition-colors">
+                        <i data-lucide="download" class="w-3 h-3"></i> PDF
                     </button>
                 </div>
             </div>
@@ -73,7 +77,7 @@
                 <div class="flex justify-between items-start mb-4">
                     <div class="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><i data-lucide="euro" class="w-5 h-5"></i></div>
                 </div>
-                <p class="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Faturamento (Período)</p>
+                <p class="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Faturamento</p>
                 <h3 class="text-2xl font-bold text-white" id="card-faturamento">€ 0,00</h3>
             </div>
 
@@ -105,7 +109,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
             <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
                 <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                    <i data-lucide="scissors" class="w-4 h-4 text-amber-500"></i> Faturamento por Barbeiro
+                    <i data-lucide="scissors" class="w-4 h-4 text-emerald-500"></i> Faturamento por Barbeiro
                 </h3>
                 <div class="chart-container"><canvas id="barberRevenueChart"></canvas></div>
             </div>
@@ -124,9 +128,8 @@
                     <h3 class="text-lg font-bold text-white flex items-center gap-2">
                         <i data-lucide="list-ordered" class="w-5 h-5 text-zinc-400"></i> Registo de Caixa
                     </h3>
-                    <p class="text-xs text-zinc-500 mt-1">Histórico de pagamentos e serviços.</p>
                 </div>
-                <input type="text" id="input-busca" placeholder="Buscar Serviço, Cliente ou Barbeiro..." class="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:border-amber-600">
+                <input type="text" id="input-busca" placeholder="Buscar Serviço, Cliente ou Barbeiro..." class="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:border-emerald-600">
             </div>
             
             <div class="overflow-x-auto">
@@ -134,18 +137,94 @@
                     <thead>
                         <tr class="bg-zinc-950 text-xs uppercase text-zinc-500 font-bold border-b border-zinc-800">
                             <th class="px-6 py-3">Data</th>
-                            <th class="px-6 py-3">ID / Transação</th>
                             <th class="px-6 py-3">Barbeiro</th>
                             <th class="px-6 py-3">Serviço / Cliente</th>
+                            <th class="px-6 py-3">Pagamento</th>
                             <th class="px-6 py-3 text-right">Valor (€)</th>
-                            <th class="px-6 py-3 text-center">Status</th>
                             <th class="px-6 py-3 text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm divide-y divide-zinc-800/50" id="ledger-body">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <div id="pos-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-slideUp">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+                <h2 class="text-xl font-bold text-emerald-500 flex items-center gap-2">
+                    <i data-lucide="calculator" class="w-5 h-5"></i> Caixa / PDV
+                </h2>
+                <button id="btn-close-pos" class="text-zinc-500 hover:text-white transition-colors"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
+            </div>
+            
+            <form id="pos-form" class="p-6 space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Serviço / Produto</label>
+                        <select id="pos-service" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 outline-none focus:border-emerald-500"></select>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Barbeiro</label>
+                        <select id="pos-barber" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 outline-none focus:border-emerald-500"></select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Cliente (Opcional)</label>
+                        <select id="pos-client" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 outline-none focus:border-emerald-500">
+                            <option value="">Cliente Avulso (Sem cadastro)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-zinc-950 p-4 rounded-xl border border-emerald-900/30 flex justify-between items-center shadow-inner mt-2">
+                    <span class="text-zinc-400 font-medium text-sm uppercase tracking-wider">Total a Pagar</span>
+                    <span id="pos-total" class="text-3xl font-bold text-emerald-400">€ 0,00</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-3">Método de Pagamento</label>
+                    <div class="grid grid-cols-2 gap-3" id="pos-methods-container">
+                        <label class="flex items-center p-3 border border-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-800 transition-all bg-zinc-900/50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10">
+                            <input type="radio" name="pos_method" value="mbway" class="hidden" required>
+                            <span class="font-medium text-sm flex items-center gap-2 text-zinc-300"><i data-lucide="smartphone" class="w-4 h-4 text-sky-400"></i> MB WAY</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-800 transition-all bg-zinc-900/50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10">
+                            <input type="radio" name="pos_method" value="multibanco" class="hidden">
+                            <span class="font-medium text-sm flex items-center gap-2 text-zinc-300"><i data-lucide="credit-card" class="w-4 h-4 text-blue-500"></i> Multibanco</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-800 transition-all bg-zinc-900/50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10">
+                            <input type="radio" name="pos_method" value="cartao" class="hidden">
+                            <span class="font-medium text-sm flex items-center gap-2 text-zinc-300"><i data-lucide="credit-card" class="w-4 h-4 text-zinc-400"></i> Cartão (TPA)</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-800 transition-all bg-zinc-900/50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10">
+                            <input type="radio" name="pos_method" value="dinheiro" class="hidden">
+                            <span class="font-medium text-sm flex items-center gap-2 text-zinc-300"><i data-lucide="banknote" class="w-4 h-4 text-emerald-500"></i> Dinheiro</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="pos-cash-details" class="hidden space-y-4 pt-4 border-t border-zinc-800/80 animate-fadeIn">
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-2">Valor Entregue (€)</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">€</span>
+                            <input type="number" id="pos-received" step="0.01" min="0" placeholder="0.00" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-4 py-3 text-zinc-100 outline-none focus:border-emerald-500 transition-colors text-lg font-medium">
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-zinc-950/80 rounded-xl border border-zinc-800">
+                        <span class="text-xs font-bold text-zinc-500 uppercase">Troco a devolver</span>
+                        <span id="pos-change" class="text-xl font-bold text-zinc-400">€ 0,00</span>
+                    </div>
+                </div>
+
+                <div class="pt-4 mt-2">
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20">
+                        <i data-lucide="check-circle" class="w-5 h-5"></i> Finalizar Venda
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

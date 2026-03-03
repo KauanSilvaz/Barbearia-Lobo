@@ -1,7 +1,7 @@
-/* financeiro.js - COMPLETO PARA COLEÇÃO HISTORY E IMPRESSÃO 80MM */
+/* financeiro.js - COMPLETO COM PDV (CAIXA) E REAL-TIME SYNC */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAmljKXhjb9GlY1ABEA-GPJqNsftsv_hVk",
@@ -20,7 +20,15 @@ let todosOsDados = [];
 let dadosExibidos = []; 
 let graficos = {}; 
 
-// Expondo a função de impressão globalmente para o onclick do HTML funcionar
+// Estado Global do PDV/Caixa
+const posState = {
+    services: [],
+    barbers: [],
+    users: [],
+    currentTotal: 0
+};
+
+// Expondo a função de impressão globalmente para o onclick do HTML
 window.imprimirNota = function(dadosCodificados) {
     financeApp.imprimirNotaTermica(dadosCodificados);
 };
@@ -29,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
     financeApp.initCharts();
     financeApp.configurarEventos();
-    financeApp.carregarDadosDoFirebase();
+    financeApp.iniciarSincronizacaoRealTime();
 });
 
 const financeApp = {
@@ -50,39 +58,96 @@ const financeApp = {
             );
             financeApp.renderLedger(filtrado);
         });
+
+        // Eventos do Modal PDV (Caixa)
+        document.getElementById('btn-abrir-caixa').addEventListener('click', financeApp.abrirModalPos);
+        document.getElementById('btn-close-pos').addEventListener('click', financeApp.fecharModalPos);
+        
+        // Atualiza valor quando muda o serviço
+        document.getElementById('pos-service').addEventListener('change', (e) => {
+            const service = posState.services.find(s => s.id === e.target.value);
+            posState.currentTotal = Number(service?.price) || 0;
+            document.getElementById('pos-total').textContent = `€ ${posState.currentTotal.toFixed(2).replace('.', ',')}`;
+            // Dispara recalculo de troco se estiver em dinheiro
+            document.getElementById('pos-received').dispatchEvent(new Event('input'));
+        });
+
+        // Alternância de métodos de pagamento no PDV
+        const radios = document.getElementsByName('pos_method');
+        Array.from(radios).forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const cashDetails = document.getElementById('pos-cash-details');
+                const receivedInput = document.getElementById('pos-received');
+                
+                if (e.target.value === 'dinheiro') {
+                    cashDetails.classList.remove('hidden');
+                    receivedInput.required = true;
+                    receivedInput.value = ''; 
+                    receivedInput.focus();
+                } else {
+                    cashDetails.classList.add('hidden');
+                    receivedInput.required = false;
+                    receivedInput.value = posState.currentTotal; 
+                }
+                receivedInput.dispatchEvent(new Event('input'));
+            });
+        });
+
+        // Cálculo de Troco
+        document.getElementById('pos-received').addEventListener('input', (e) => {
+            const received = Number(e.target.value) || 0;
+            const change = received - posState.currentTotal;
+            const changeDisplay = document.getElementById('pos-change');
+            
+            changeDisplay.classList.remove('text-red-500', 'text-emerald-400', 'text-zinc-400');
+
+            if (received === 0) {
+                changeDisplay.textContent = `€ 0,00`;
+                changeDisplay.classList.add('text-zinc-400');
+            } else if (change < 0) {
+                changeDisplay.textContent = `Faltam € ${Math.abs(change).toFixed(2).replace('.', ',')}`;
+                changeDisplay.classList.add('text-red-500'); 
+            } else {
+                changeDisplay.textContent = `€ ${change.toFixed(2).replace('.', ',')}`;
+                changeDisplay.classList.add('text-emerald-400'); 
+            }
+        });
+
+        // Submit do Form do PDV
+        document.getElementById('pos-form').addEventListener('submit', financeApp.salvarVendaPos);
     },
 
-    carregarDadosDoFirebase: async () => {
-        try {
-            // Buscando da coleção 'history'
-            const historyRef = collection(db, "history");
-            const q = query(historyRef, orderBy("completedAt", "desc")); 
-            const querySnapshot = await getDocs(q);
-            
+    iniciarSincronizacaoRealTime: () => {
+        // 1. Sincroniza o Histórico (Real-time com a tela Home)
+        const historyRef = collection(db, "history");
+        const q = query(historyRef, orderBy("completedAt", "desc")); 
+
+        onSnapshot(q, (snapshot) => {
             todosOsDados = [];
             const barbeirosSet = new Set();
 
-            querySnapshot.forEach((doc) => {
+            snapshot.forEach((doc) => {
                 const data = doc.data();
-                
-                // Mapeando com os campos corretos do History
                 todosOsDados.push({
                     id: doc.id,
-                    data: data.date, // ex: "2026-02-27"
-                    cliente: data.clientName || "Cliente Particular",
-                    clienteId: data.userId,
-                    servico: data.serviceName,
-                    barbeiro: data.barberName,
+                    data: data.date || data.scheduledDate || data.completedAt.split('T')[0],
+                    cliente: data.clientName || "Cliente Avulso",
+                    clienteId: data.userId || "avulso",
+                    servico: data.serviceName || "Venda Avulsa",
+                    barbeiro: data.barberName || "Geral",
                     valor: Number(data.finalPrice || data.price || 0),
-                    status: data.status === 'completed' ? 'Concluído' : data.status,
+                    metodo: data.paymentMethod || 'Não Inf.',
+                    recebido: data.amountReceived || Number(data.finalPrice || data.price || 0),
+                    troco: data.changeReturned || 0,
+                    status: 'Concluído',
                     dataHoraSucesso: data.completedAt
                 });
-
                 if(data.barberName) barbeirosSet.add(data.barberName);
             });
 
-            // Preenchendo o select de exportação com os barbeiros encontrados
+            // Preenche select de exportação
             const selectExport = document.getElementById('export-barber-select');
+            const valorAtual = selectExport.value;
             selectExport.innerHTML = '<option value="todos">Todos os Barbeiros</option>';
             barbeirosSet.forEach(barbeiro => {
                 const option = document.createElement('option');
@@ -90,17 +155,134 @@ const financeApp = {
                 option.textContent = barbeiro;
                 selectExport.appendChild(option);
             });
+            selectExport.value = valorAtual || 'todos';
 
-            // Inicia clicando em "Este Mês" por padrão
-            document.getElementById('btn-mes').click();
+            // Reaplica o filtro ativo
+            const botaoAtivo = document.querySelector('.btn-periodo.bg-zinc-800') || document.getElementById('btn-mes');
+            botaoAtivo.click();
+        });
 
+        // 2. Sincroniza dados auxiliares para o PDV
+        onSnapshot(collection(db, "services"), (snap) => {
+            posState.services = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        });
+        onSnapshot(collection(db, "employees"), (snap) => {
+            posState.barbers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        });
+        onSnapshot(collection(db, "users"), (snap) => {
+            posState.users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        });
+    },
+
+    // --- FUNÇÕES DO PDV (CAIXA) ---
+    abrirModalPos: () => {
+        const selectSvc = document.getElementById('pos-service');
+        const selectBrb = document.getElementById('pos-barber');
+        const selectCli = document.getElementById('pos-client');
+
+        // Preenche Serviços
+        selectSvc.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+        posState.services.forEach(s => selectSvc.add(new Option(`${s.name} (€${s.price})`, s.id)));
+        
+        // Preenche Barbeiros
+        selectBrb.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+        posState.barbers.forEach(b => selectBrb.add(new Option(b.name, b.id)));
+        
+        // Preenche Clientes
+        selectCli.innerHTML = '<option value="">Cliente Avulso (Sem cadastro)</option>';
+        posState.users.forEach(u => selectCli.add(new Option(u.name, u.id)));
+
+        // Resets
+        document.getElementById('pos-form').reset();
+        posState.currentTotal = 0;
+        document.getElementById('pos-total').textContent = '€ 0,00';
+        document.getElementById('pos-cash-details').classList.add('hidden');
+        document.getElementById('pos-change').textContent = '€ 0,00';
+        document.getElementById('pos-change').className = 'text-xl font-bold text-zinc-400';
+
+        document.getElementById('pos-modal').classList.remove('hidden');
+    },
+
+    fecharModalPos: () => {
+        document.getElementById('pos-modal').classList.add('hidden');
+    },
+
+    salvarVendaPos: async (e) => {
+        e.preventDefault();
+        
+        const method = document.querySelector('input[name="pos_method"]:checked').value;
+        let received = Number(document.getElementById('pos-received').value);
+        
+        if (method !== 'dinheiro') received = posState.currentTotal;
+        
+        if (method === 'dinheiro' && received < posState.currentTotal) {
+            alert("O valor recebido é menor que o total a pagar.");
+            return;
+        }
+
+        const submitBtn = e.submitter;
+        const originalContent = submitBtn.innerHTML;
+        submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Finalizando...`;
+        submitBtn.disabled = true;
+
+        try {
+            const service = posState.services.find(s => s.id === document.getElementById('pos-service').value);
+            const barber = posState.barbers.find(b => b.id === document.getElementById('pos-barber').value);
+            const clientSelect = document.getElementById('pos-client');
+            
+            let clientId = clientSelect.value;
+            let clientName = "Cliente Avulso";
+            if (clientId) {
+                const client = posState.users.find(u => u.id === clientId);
+                if (client) clientName = client.name;
+            }
+
+            const change = method === 'dinheiro' ? (received - posState.currentTotal) : 0;
+            const dataHoje = new Date().toISOString();
+            
+            // Payload padrão SAMI (O mesmo do home.js)
+            const transactionData = {
+                originalBookingId: "lancamento_manual",
+                companyId: "sami",
+                userId: clientId,
+                clientName: clientName,
+                barberId: barber.id,
+                barberName: barber.name,
+                serviceId: service.id,
+                serviceName: service.name,
+                
+                scheduledDate: dataHoje.split('T')[0],
+                completedAt: dataHoje,
+                duration: 0,
+                
+                currency: 'EUR',
+                subtotal: posState.currentTotal,
+                taxRate: 23, 
+                taxAmount: posState.currentTotal - (posState.currentTotal / 1.23), 
+                discountAmount: 0,
+                finalPrice: posState.currentTotal,
+                
+                paymentMethod: method,          
+                amountReceived: received,
+                changeReturned: change,
+                paymentStatus: 'paid',          
+                invoiceStatus: 'pending',       
+            };
+
+            await addDoc(collection(db, "history"), transactionData);
+            financeApp.fecharModalPos();
+            
         } catch (error) {
-            console.error("Erro ao buscar dados do Firebase:", error);
+            console.error("Erro ao salvar venda PDV:", error);
+            alert("Ocorreu um erro ao processar a venda.");
+        } finally {
+            submitBtn.innerHTML = originalContent;
+            submitBtn.disabled = false;
         }
     },
 
+    // --- FUNÇÕES DE INTERFACE ---
     aplicarFiltroPeriodo: (periodo, botaoClicado) => {
-        // Estiliza o botão selecionado
         document.querySelectorAll('.btn-periodo').forEach(btn => {
             btn.classList.remove('bg-zinc-800', 'text-white', 'shadow-sm');
             btn.classList.add('text-zinc-400');
@@ -111,7 +293,6 @@ const financeApp = {
         const hoje = new Date();
         const dataHojeStr = hoje.toISOString().split('T')[0];
 
-        // Lógica de filtragem baseada no campo 'data'
         dadosExibidos = todosOsDados.filter(item => {
             if (periodo === 'hoje') return item.data === dataHojeStr;
             
@@ -123,19 +304,15 @@ const financeApp = {
             } 
             
             if (periodo === 'mes') {
-                const mesAtual = dataHojeStr.substring(0, 7); // Pega 'YYYY-MM'
+                const mesAtual = dataHojeStr.substring(0, 7); 
                 return item.data.startsWith(mesAtual);
             }
             return true;
         });
 
-        financeApp.atualizarInterface(dadosExibidos);
-    },
-
-    atualizarInterface: (dados) => {
-        financeApp.atualizarCards(dados);
-        financeApp.renderLedger(dados);
-        financeApp.atualizarGraficos(dados);
+        financeApp.atualizarCards(dadosExibidos);
+        financeApp.renderLedger(dadosExibidos);
+        financeApp.atualizarGraficos(dadosExibidos);
     },
 
     atualizarCards: (dados) => {
@@ -144,8 +321,8 @@ const financeApp = {
         const ticketMedio = total / (qtdServicos || 1);
         const clientesUnicos = new Set(dados.map(d => d.clienteId)).size;
 
-        document.getElementById('card-faturamento').textContent = `€ ${total.toFixed(2)}`;
-        document.getElementById('card-ticket').textContent = `€ ${ticketMedio.toFixed(2)}`;
+        document.getElementById('card-faturamento').textContent = `€ ${total.toFixed(2).replace('.', ',')}`;
+        document.getElementById('card-ticket').textContent = `€ ${ticketMedio.toFixed(2).replace('.', ',')}`;
         document.getElementById('card-servicos').textContent = qtdServicos;
         document.getElementById('card-clientes').textContent = clientesUnicos;
     },
@@ -154,40 +331,15 @@ const financeApp = {
         const ctxBarber = document.getElementById('barberRevenueChart').getContext('2d');
         graficos.barberChart = new Chart(ctxBarber, {
             type: 'bar',
-            data: { 
-                labels: [], 
-                datasets: [{ 
-                    label: 'Faturamento (€)', 
-                    data: [], 
-                    backgroundColor: 'rgba(245, 158, 11, 0.8)', 
-                    borderRadius: 4 
-                }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } }, 
-                scales: { y: { beginAtZero: true, grid: { color: '#27272a' } } } 
-            }
+            data: { labels: [], datasets: [{ label: 'Faturamento (€)', data: [], backgroundColor: '#10b981', borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#27272a' } } } }
         });
 
         const ctxServices = document.getElementById('servicesMixChart').getContext('2d');
         graficos.servicesChart = new Chart(ctxServices, {
             type: 'doughnut',
-            data: { 
-                labels: [], 
-                datasets: [{ 
-                    data: [], 
-                    backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'], 
-                    borderWidth: 0 
-                }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                cutout: '75%', 
-                plugins: { legend: { position: 'right', labels: { color: '#a1a1aa', font: { size: 10 } } } } 
-            }
+            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { color: '#a1a1aa', font: { size: 10 } } } } }
         });
     },
 
@@ -215,23 +367,30 @@ const financeApp = {
         tbody.innerHTML = '';
 
         if(dados.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-zinc-500">Nenhum registo no histórico para este período.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-zinc-500">Nenhum registo no histórico para este período.</td></tr>`;
             return;
         }
+
+        const iconesMetodo = {
+            'mbway': '<i data-lucide="smartphone" class="w-3 h-3 text-sky-400 mr-1"></i> MB WAY',
+            'multibanco': '<i data-lucide="credit-card" class="w-3 h-3 text-blue-500 mr-1"></i> Multibanco',
+            'cartao': '<i data-lucide="credit-card" class="w-3 h-3 text-zinc-400 mr-1"></i> Cartão',
+            'dinheiro': '<i data-lucide="banknote" class="w-3 h-3 text-emerald-500 mr-1"></i> Dinheiro',
+            'Não Inf.': '<i data-lucide="help-circle" class="w-3 h-3 text-zinc-600 mr-1"></i> Não Inf.'
+        };
 
         dados.forEach(row => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-zinc-900/50 transition-colors group';
             
-            // Badge verde e destacado para o status concluído
-            const statusBadge = `<span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 text-emerald-500 bg-emerald-500/10">${row.status}</span>`;
+            const metodoBadge = `<div class="flex items-center text-xs text-zinc-300 bg-zinc-950 px-2 py-1 rounded border border-zinc-800 w-max">
+                ${iconesMetodo[row.metodo] || iconesMetodo['Não Inf.']}
+            </div>`;
 
-            // Codifica o JSON da linha para injetar no botão de impressão de forma segura
             const dadosJson = encodeURIComponent(JSON.stringify(row));
 
             tr.innerHTML = `
                 <td class="px-6 py-3 text-zinc-300 font-mono text-xs">${row.data}</td>
-                <td class="px-6 py-3 text-zinc-500 font-mono text-[10px] truncate max-w-[100px]">${row.id}</td>
                 <td class="px-6 py-3 text-zinc-300 text-xs font-medium">${row.barbeiro}</td>
                 <td class="px-6 py-3">
                     <div class="flex flex-col">
@@ -239,10 +398,10 @@ const financeApp = {
                         <span class="text-[10px] text-zinc-500">${row.cliente}</span>
                     </div>
                 </td>
-                <td class="px-6 py-3 text-right font-medium text-zinc-100">€ ${row.valor.toFixed(2)}</td>
-                <td class="px-6 py-3 text-center">${statusBadge}</td>
+                <td class="px-6 py-3">${metodoBadge}</td>
+                <td class="px-6 py-3 text-right font-medium text-zinc-100">€ ${row.valor.toFixed(2).replace('.', ',')}</td>
                 <td class="px-6 py-3 text-center">
-                    <button onclick="window.imprimirNota('${dadosJson}')" class="p-1.5 text-zinc-500 hover:text-amber-500 hover:bg-amber-500/10 rounded transition-colors" title="Imprimir Recibo">
+                    <button onclick="window.imprimirNota('${dadosJson}')" class="p-1.5 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors" title="Imprimir Recibo">
                         <i data-lucide="printer" class="w-4 h-4"></i>
                     </button>
                 </td>
@@ -279,15 +438,15 @@ const financeApp = {
         doc.text(`Faturamento Total Listado: € ${totalExportacao.toFixed(2)}`, 14, 34);
 
         const linhasTabela = dadosParaExportar.map(d => [
-            d.data, d.barbeiro, d.cliente, d.servico, `€ ${d.valor.toFixed(2)}`, d.status
+            d.data, d.barbeiro, d.cliente, d.servico, d.metodo.toUpperCase(), `€ ${d.valor.toFixed(2)}`
         ]);
 
         doc.autoTable({
             startY: 40,
-            head: [['Data', 'Barbeiro', 'Cliente', 'Serviço', 'Valor', 'Status']],
+            head: [['Data', 'Barbeiro', 'Cliente', 'Serviço', 'Pagto', 'Valor']],
             body: linhasTabela,
             theme: 'grid',
-            headStyles: { fillColor: [24, 24, 27], textColor: [161, 161, 170] },
+            headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255] }, // Emerald
             styles: { fontSize: 8 }
         });
 
@@ -297,7 +456,8 @@ const financeApp = {
     imprimirNotaTermica: (dadosJsonCodificados) => {
         const dados = JSON.parse(decodeURIComponent(dadosJsonCodificados));
         
-        // Estrutura HTML limpa e formatada perfeitamente para 80mm
+        const metodoText = dados.metodo ? dados.metodo.toUpperCase() : 'NÃO INFORMADO';
+        
         const cupomHTML = `
             <div id="recibo-termico">
                 <div style="text-align: center; margin-bottom: 5px;">
@@ -334,24 +494,28 @@ const financeApp = {
                     <span>TOTAL PAGO</span>
                     <span>€ ${dados.valor.toFixed(2)}</span>
                 </div>
+                
+                <div style="margin-top: 10px; font-size: 12px;">
+                    <strong>Forma de Pagto:</strong> ${metodoText}<br>
+                    <strong>Valor Recebido:</strong> € ${dados.recebido.toFixed(2)}<br>
+                    <strong>Troco:</strong> € ${dados.troco.toFixed(2)}
+                </div>
 
                 <div style="text-align: center; margin-top: 25px; font-size: 11px;">
-                    <p>Status: <strong>CONCLUÍDO</strong></p>
+                    <p>Status: <strong>PAGO</strong></p>
                     <p style="margin-top: 15px;">Agradecemos a preferência!</p>
                     <p style="margin-top: 5px;">................................</p>
                 </div>
             </div>
         `;
 
-        // Cria o elemento invisível, insere no DOM e dispara a impressão
         const divPrint = document.createElement('div');
         divPrint.innerHTML = cupomHTML;
         document.body.appendChild(divPrint);
         
-        // Delay minúsculo para garantir que o CSS aplique no momento da impressão
         setTimeout(() => {
             window.print();
-            document.body.removeChild(divPrint); // Limpa o DOM após imprimir
+            document.body.removeChild(divPrint); 
         }, 150);
     }
 };

@@ -9,23 +9,26 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="clientes.css">
 </head>
-<body class="selection:bg-amber-500/30 overflow-hidden h-screen flex flex-col">
+<body class="selection:bg-amber-500/30 overflow-hidden h-screen flex flex-col relative">
+
+    <div id="bg-watermark" class="fixed inset-0 z-[-1] flex items-center justify-center pointer-events-none opacity-[0.04] overflow-hidden">
+        <img id="watermark-img" src="../img/lobologo.jpeg" alt="" class="w-[80%] md:w-[50%] max-w-2xl transition-all duration-700">
+    </div>
 
     <header class="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex-shrink-0">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
             
-<div class="flex-shrink-0 flex items-center">
-    <img src="../img/lobologo.jpeg" alt="Barbearia Lobo" class="h-10 w-auto cursor-pointer">
-</div>
+            <div class="flex-shrink-0 flex items-center">
+                <img id="header-logo" src="../img/lobologo.jpeg" alt="Barbearia Lobo" class="h-10 w-auto cursor-pointer">
+            </div>
 
-          <nav class="hidden md:flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
-    <a href="../home/home.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Agenda</a>
-    
-    <a href="../clientes/clientes.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Clientes</a>
-    <a href="../servicos/servicos.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Serviços</a>
-    <a href="../financeiro/financeiro.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Financeiro</a>
-    <a href="../config/config.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Config</a>
-</nav>
+            <nav class="hidden md:flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
+                <a href="../home/home.html" class="px-4 py-1.5 text-sm font-medium text-zinc-100 bg-zinc-800 rounded-md shadow-sm transition-all border border-zinc-700/50">Agenda</a>
+                <a href="../clientes/clientes.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Clientes</a>
+                <a href="../servicos/servicos.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Serviços</a>
+                <a href="../financeiro/financeiro.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Financeiro</a>
+                <a href="../config/config.html" class="px-4 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Config</a>
+            </nav>
 
             <button class="md:hidden p-2 text-zinc-400 hover:text-white">
                 <i data-lucide="menu" class="w-6 h-6"></i>
@@ -86,13 +89,15 @@
 
     <div id="client-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden animate-slideUp flex flex-col md:flex-row max-h-[90vh]">
-            <div class="w-full md:w-1/3 bg-zinc-950/50 border-b md:border-b-0 md:border-r border-zinc-800 p-6 flex flex-col items-center text-center">
+            <div class="w-full md:w-1/3 bg-zinc-950/50 border-b md:border-b-0 md:border-r border-zinc-800 p-6 flex flex-col items-center text-center overflow-y-auto custom-scrollbar">
                 <div class="w-24 h-24 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center text-zinc-400 font-bold text-3xl mb-4 relative">
                     <span id="detail-initials">--</span>
                     <div class="absolute bottom-0 right-0 w-6 h-6 bg-emerald-500 border-2 border-zinc-900 rounded-full"></div>
                 </div>
                 <h2 id="detail-name" class="text-xl font-bold text-white mb-1">...</h2>
+                <div id="detail-status" class="mb-1 text-[10px] uppercase font-bold px-2 py-0.5 rounded"></div>
                 <p id="detail-since" class="text-xs text-zinc-500 mb-6">...</p>
+                
                 <div class="w-full space-y-4 text-left">
                     <div class="bg-zinc-900 p-3 rounded-lg border border-zinc-800">
                         <label class="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Telefone</label>
@@ -108,6 +113,18 @@
                             <span id="detail-email">...</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="w-full flex flex-col gap-2 mt-6 pt-6 border-t border-zinc-800">
+                    <button onclick="app.openEditClientModal()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i> Editar Dados
+                    </button>
+                    <button onclick="app.toggleBlockClient()" id="btn-block-client" class="w-full bg-amber-900/20 text-amber-500 hover:bg-amber-900/40 py-2.5 rounded-xl text-sm font-bold transition-colors border border-amber-900/50 flex items-center justify-center gap-2">
+                        <i data-lucide="ban" class="w-4 h-4"></i> Bloquear Cliente
+                    </button>
+                    <button onclick="app.deleteClient()" class="w-full bg-red-900/20 text-red-500 hover:bg-red-900/40 py-2.5 rounded-xl text-sm font-bold transition-colors border border-red-900/50 flex items-center justify-center gap-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir Cliente
+                    </button>
                 </div>
             </div>
 
@@ -141,76 +158,114 @@
         </div>
     </div>
 
-<div id="new-client-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
-        <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
-            <h3 class="font-bold text-zinc-100 flex items-center gap-2">
-                <i data-lucide="user-plus" class="w-5 h-5 text-amber-500"></i> Cadastrar Novo Cliente
-            </h3>
-            <button onclick="app.closeNewClientModal()" class="text-zinc-500 hover:text-white transition-colors">
-                <i data-lucide="x" class="w-6 h-6"></i>
-            </button>
-        </div>
-        
-        <form id="new-client-form" class="p-6 space-y-4">
-            <div class="space-y-1.5">
-                <label class="text-xs font-bold text-zinc-500 uppercase">Nome Completo</label>
-                <input type="text" id="new-name" required placeholder="Ex: João Silva" 
-                    class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
-            </div>
-
-            <div class="space-y-1.5">
-                <label class="text-xs font-bold text-zinc-500 uppercase">Telefone</label>
-                <input type="text" id="new-phone" placeholder="(85) 9 0000-0000" 
-                    class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
-            </div>
-
-            <div class="space-y-1.5">
-                <label class="text-xs font-bold text-zinc-500 uppercase">E-mail</label>
-                <input type="email" id="new-email" placeholder="cliente@email.com" 
-                    class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
-            </div>
-
-            <div class="pt-2">
-                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
-                    <i data-lucide="check" class="w-5 h-5"></i> Salvar Cliente
+    <div id="new-client-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+                <h3 class="font-bold text-zinc-100 flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-5 h-5 text-amber-500"></i> Cadastrar Novo Cliente
+                </h3>
+                <button onclick="app.closeNewClientModal()" class="text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
             </div>
-        </form>
+            
+            <form id="new-client-form" class="p-6 space-y-4">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">Nome Completo</label>
+                    <input type="text" id="new-name" required placeholder="Ex: João Silva" 
+                        class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">Telefone</label>
+                    <input type="text" id="new-phone" placeholder="(85) 9 0000-0000" 
+                        class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">E-mail</label>
+                    <input type="email" id="new-email" placeholder="cliente@email.com" 
+                        class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i data-lucide="check" class="w-5 h-5"></i> Salvar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
+
+    <div id="edit-client-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+                <h3 class="font-bold text-zinc-100 flex items-center gap-2">
+                    <i data-lucide="edit-2" class="w-5 h-5 text-amber-500"></i> Editar Cliente
+                </h3>
+                <button onclick="app.closeEditClientModal()" class="text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <form id="edit-client-form" class="p-6 space-y-4">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">Nome Completo</label>
+                    <input type="text" id="edit-name" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">Telefone</label>
+                    <input type="text" id="edit-phone" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">E-mail</label>
+                    <input type="email" id="edit-email" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-zinc-100 hover:bg-white text-zinc-900 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i data-lucide="save" class="w-5 h-5"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { 
-    getFirestore, 
-    collection, 
-    getDocs, 
-    addDoc, 
-    serverTimestamp,
-    query,
-    where
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getFirestore, 
+            collection, 
+            getDocs, 
+            addDoc, 
+            serverTimestamp,
+            query,
+            where,
+            doc,
+            updateDoc,
+            deleteDoc,
+            onSnapshot
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAmljKXhjb9GlY1ABEA-GPJqNsftsv_hVk",
-  authDomain: "ksstech-79520.firebaseapp.com",
-  projectId: "ksstech-79520",
-  storageBucket: "ksstech-79520.firebasestorage.app",
-  messagingSenderId: "935997511388",
-  appId: "1:935997511388:web:9c336727d3e588ee30c619",
-  measurementId: "G-TM49C8N0T1"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAmljKXhjb9GlY1ABEA-GPJqNsftsv_hVk",
+            authDomain: "ksstech-79520.firebaseapp.com",
+            projectId: "ksstech-79520",
+            storageBucket: "ksstech-79520.firebasestorage.app",
+            messagingSenderId: "935997511388",
+            appId: "1:935997511388:web:9c336727d3e588ee30c619",
+            measurementId: "G-TM49C8N0T1"
+        };
 
-  // Inicializar Firebase e Firestore
-  const firebaseApp = initializeApp(firebaseConfig);
-  const db = getFirestore(firebaseApp);
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getFirestore(firebaseApp);
 
-  // Exportar para o seu clientes.js (opcional, mas vamos usar via window para facilitar)
-  window.db = db;
-  window.dbMethods = { collection, getDocs, addDoc, serverTimestamp, query, where };
-</script>
+        window.db = db;
+        window.dbMethods = { collection, getDocs, addDoc, serverTimestamp, query, where, doc, updateDoc, deleteDoc, onSnapshot };
+    </script>
 
-<script src="clientes.js"></script>
+    <script src="clientes.js"></script>
 </body>
 </html>

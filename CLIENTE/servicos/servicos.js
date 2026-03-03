@@ -85,19 +85,28 @@ const app = {
         filtered.forEach(s => {
             const hasPromo = s.isPromo && s.promoPrice;
             const complexityClass = s.complexity || 'facil';
+            // Se isActive não existir no banco (itens antigos), consideramos true por padrão
+            const isActive = s.isActive !== false; 
             
             const cat = categories.find(c => c.id === s.categoryId);
             const categoryName = cat ? cat.name : 'Sem Categoria';
             
             const card = document.createElement('div');
-            card.className = `relative bg-zinc-900 border rounded-xl p-5 transition-all hover:-translate-y-1 cursor-pointer ${s.type === 'combo' ? 'border-amber-500/30' : 'border-zinc-800'}`;
+            // Adiciona opacidade e tons de cinza se estiver suspenso
+            card.className = `relative flex flex-col bg-zinc-900 border rounded-xl p-5 transition-all hover:-translate-y-1 cursor-pointer ${s.type === 'combo' ? 'border-amber-500/30' : 'border-zinc-800'} ${!isActive ? 'opacity-60 grayscale' : ''}`;
             
+            const imgHTML = s.image ? `<img src="${s.image}" alt="${s.name}" class="w-full h-32 object-cover rounded-lg mb-4 border border-zinc-800/50">` : '';
+            const descHTML = s.description ? `<p class="text-xs text-zinc-400 mb-4 line-clamp-2 flex-grow">${s.description}</p>` : '<div class="flex-grow"></div>';
+            const suspendedBadge = !isActive ? `<span class="bg-red-500/10 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-500/20">SUSPENSO</span>` : '';
+
             card.innerHTML = `
+                ${imgHTML}
                 <div class="flex items-start justify-between mb-3">
                     <div class="w-10 h-10 rounded-lg flex items-center justify-center ${s.type === 'combo' ? 'bg-amber-500 text-black' : 'bg-zinc-800 text-zinc-400'}">
                         <i data-lucide="${s.type === 'combo' ? 'layers' : 'scissors'}" class="w-5 h-5"></i>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 items-center flex-wrap justify-end">
+                        ${suspendedBadge}
                         <span class="bg-zinc-800 text-zinc-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-zinc-700">${categoryName}</span>
                         ${hasPromo ? '<span class="bg-emerald-500/10 text-emerald-500 text-[10px] font-bold px-2 py-0.5 rounded-full">PROMO</span>' : ''}
                     </div>
@@ -106,8 +115,9 @@ const app = {
                     <span class="complexity-dot bg-${complexityClass}"></span>
                     ${s.name}
                 </h3>
-                <p class="text-xs text-zinc-500 mb-4">${s.type === 'combo' ? 'Combo Promocional' : 'Serviço Único'}</p>
-                <div class="flex items-center justify-between pt-3 border-t border-zinc-800/50">
+                <p class="text-xs text-zinc-500 mb-2">${s.type === 'combo' ? 'Combo Promocional' : 'Serviço Único'}</p>
+                ${descHTML}
+                <div class="flex items-center justify-between pt-3 border-t border-zinc-800/50 mt-auto">
                     <span class="text-zinc-400 text-xs flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${s.duration} min</span>
                     <span class="font-bold text-lg ${hasPromo ? 'text-emerald-500' : 'text-white'}">€ ${(hasPromo ? s.promoPrice : s.price).toFixed(2)}</span>
                 </div>
@@ -134,6 +144,11 @@ const app = {
             document.getElementById('form-complexity').value = s.complexity || 'facil';
             document.getElementById('form-category').value = s.categoryId || '';
             
+            // NOVOS CAMPOS:
+            document.getElementById('form-image').value = s.image || '';
+            document.getElementById('form-description').value = s.description || '';
+            document.getElementById('form-is-active').checked = s.isActive !== false; // Padrão é true
+            
             app.setType(s.type);
             if(s.isPromo) {
                 document.getElementById('form-is-promo').checked = true;
@@ -144,6 +159,12 @@ const app = {
             document.getElementById('modal-title').innerText = 'Novo Serviço';
             document.getElementById('form-complexity').value = 'facil';
             document.getElementById('form-category').value = ''; 
+            
+            // RESET NOVOS CAMPOS:
+            document.getElementById('form-image').value = '';
+            document.getElementById('form-description').value = '';
+            document.getElementById('form-is-active').checked = true; // Por padrão, começa ativo
+            
             app.setType('service');
         }
         document.getElementById('service-modal').classList.remove('hidden');
@@ -200,7 +221,12 @@ const app = {
             price: parseFloat(document.getElementById('form-price').value),
             duration: parseInt(document.getElementById('form-duration').value),
             isPromo: document.getElementById('form-is-promo').checked,
-            promoPrice: parseFloat(document.getElementById('form-promo-price').value) || null
+            promoPrice: parseFloat(document.getElementById('form-promo-price').value) || null,
+            
+            // NOVOS DADOS PARA SALVAR:
+            image: document.getElementById('form-image').value,
+            description: document.getElementById('form-description').value,
+            isActive: document.getElementById('form-is-active').checked
         };
 
         try {

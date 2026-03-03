@@ -84,9 +84,9 @@
                             <label class="block text-xs font-bold text-zinc-500 uppercase mb-3">Dias de Trabalho</label>
                             <div class="flex flex-wrap gap-2" id="days-container"></div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-800">
-                            <div class="space-y-4">
-                                <label class="block text-xs font-bold text-zinc-500 uppercase">Turno Geral</label>
+                        <div class="pt-4 border-t border-zinc-800">
+                            <div class="space-y-4 max-w-md">
+                                <label class="block text-xs font-bold text-zinc-500 uppercase">Turno Geral da Barbearia</label>
                                 <div class="flex gap-4 items-center">
                                     <div class="flex-1">
                                         <label class="text-xs text-zinc-400 mb-1 block">Abertura</label>
@@ -96,20 +96,6 @@
                                     <div class="flex-1">
                                         <label class="text-xs text-zinc-400 mb-1 block">Fecho</label>
                                         <input type="time" id="sched-close" value="20:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-amber-500 outline-none">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="space-y-4">
-                                <label class="block text-xs font-bold text-zinc-500 uppercase">Pausa para Almoço</label>
-                                <div class="flex gap-4 items-center">
-                                    <div class="flex-1">
-                                        <label class="text-xs text-zinc-400 mb-1 block">Início</label>
-                                        <input type="time" id="sched-lunch-start" value="13:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-amber-500 outline-none">
-                                    </div>
-                                    <span class="text-zinc-600">-</span>
-                                    <div class="flex-1">
-                                        <label class="text-xs text-zinc-400 mb-1 block">Fim</label>
-                                        <input type="time" id="sched-lunch-end" value="14:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-amber-500 outline-none">
                                     </div>
                                 </div>
                             </div>
@@ -126,6 +112,35 @@
                         <p class="text-zinc-400 text-sm">Informações visíveis para o cliente.</p>
                     </div>
                     <form class="space-y-6 max-w-2xl" onsubmit="event.preventDefault(); app.saveCompany();">
+                        
+                        <div class="flex items-center gap-4 p-4 bg-zinc-950/50 rounded-xl border border-zinc-800">
+                            <div class="relative flex-shrink-0">
+                                <img id="comp-logo-preview" src="https://ui-avatars.com/api/?name=Logo&background=27272a&color=f4f4f5" 
+                                    class="w-20 h-20 rounded-xl object-cover border-2 border-zinc-700 bg-zinc-800">
+                                <div id="comp-logo-placeholder" class="absolute inset-0 rounded-xl bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 hidden">
+                                    <i data-lucide="image" class="w-8 h-8 text-zinc-600"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-1 space-y-1.5">
+                                <label class="text-xs font-bold text-zinc-500 uppercase">URL da Logo da Barbearia</label>
+                                <div class="relative">
+                                    <i data-lucide="link" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+                                    <input type="url" id="comp-logo" placeholder="https://exemplo.com/logo.png" 
+                                        class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors"
+                                        oninput="app.updateCompanyLogoPreview(this.value)">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-zinc-500 uppercase">Link do Google Maps</label>
+                            <div class="relative">
+                                <i data-lucide="map-pin" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+                                <input type="url" id="comp-maps" placeholder="https://maps.app.goo.gl/..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+                            </div>
+                        </div>
+
                         <div class="space-y-2">
                             <label class="block text-xs font-bold text-zinc-500 uppercase">Sobre Nós</label>
                             <textarea id="comp-about" rows="4" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 resize-none"></textarea>
@@ -177,70 +192,112 @@
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <form id="employee-form" class="p-6 space-y-4">
-    <input type="hidden" id="emp-id">
-    
-    <div class="flex items-center gap-4 mb-4 p-4 bg-zinc-950 rounded-xl border border-zinc-800">
-        <div class="relative flex-shrink-0">
-            <img id="emp-img-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=perfil" 
-                class="w-20 h-20 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800">
-            <div id="emp-img-placeholder" class="absolute inset-0 rounded-full bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 hidden">
-                <i data-lucide="user" class="w-8 h-8 text-zinc-600"></i>
-            </div>
-        </div>
-        
-        <div class="flex-1 space-y-1.5">
-            <label class="text-xs font-bold text-zinc-500 uppercase">URL da Foto de Perfil</label>
-            <div class="relative">
-                <i data-lucide="link" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
-                <input type="url" id="emp-photo-url" placeholder="https://exemplo.com/foto.jpg" 
-                    class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors"
-                    oninput="app.updateEmployeePhotoPreview(this.value)">
-            </div>
-        </div>
-    </div>
+            
+            <form id="employee-form" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                <input type="hidden" id="emp-id">
+                
+                <div class="flex items-center gap-4 mb-4 p-4 bg-zinc-950 rounded-xl border border-zinc-800">
+                    <div class="relative flex-shrink-0">
+                        <img id="emp-img-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=perfil" 
+                            class="w-20 h-20 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800">
+                        <div id="emp-img-placeholder" class="absolute inset-0 rounded-full bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 hidden">
+                            <i data-lucide="user" class="w-8 h-8 text-zinc-600"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 space-y-1.5">
+                        <label class="text-xs font-bold text-zinc-500 uppercase">URL da Foto de Perfil</label>
+                        <div class="relative">
+                            <i data-lucide="link" class="absolute left-3 top-3 w-4 h-4 text-zinc-500"></i>
+                            <input type="url" id="emp-photo-url" placeholder="https://exemplo.com/foto.jpg" 
+                                class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors"
+                                oninput="app.updateEmployeePhotoPreview(this.value)">
+                        </div>
+                    </div>
+                </div>
 
-    <div class="space-y-1.5">
-        <label class="text-xs font-bold text-zinc-500 uppercase">Nome Completo</label>
-        <input type="text" id="emp-name" required placeholder="Ex: João Silva" 
-            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
-    </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">Nome Completo</label>
+                    <input type="text" id="emp-name" required placeholder="Ex: João Silva" 
+                        class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+                </div>
 
-    <div class="grid grid-cols-2 gap-4">
-        <div class="space-y-1.5">
-            <label class="text-xs font-bold text-zinc-500 uppercase">Função</label>
-            <select id="emp-role" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
-                <option value="Barbeiro">Barbeiro</option>
-                <option value="Recepcionista">Recepcionista</option>
-                <option value="Gerente">Gerente</option>
-            </select>
-        </div>
-        <div class="space-y-1.5">
-            <label class="text-xs font-bold text-zinc-500 uppercase">Especialidade</label>
-            <input type="text" id="emp-spec" placeholder="Ex: Degradê, Barboterapia" 
-                class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
-        </div>
-    </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-zinc-500 uppercase">Função</label>
+                        <select id="emp-role" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
+                            <option value="Barbeiro">Barbeiro</option>
+                            <option value="Recepcionista">Recepcionista</option>
+                            <option value="Gerente">Gerente</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-zinc-500 uppercase">Especialidade</label>
+                        <input type="text" id="emp-spec" placeholder="Ex: Degradê, Barboterapia" 
+                            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+                    </div>
+                </div>
 
-    <div class="space-y-1.5">
-        <label class="text-xs font-bold text-zinc-500 uppercase">Email (Login)</label>
-        <input type="email" id="emp-email" required placeholder="joao@email.com" 
-            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
-    </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">Email (Login)</label>
+                    <input type="email" id="emp-email" required placeholder="joao@email.com" 
+                        class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+                </div>
 
-    <div class="space-y-1.5">
-        <label class="text-xs font-bold text-zinc-500 uppercase">Senha</label>
-        <input type="password" id="emp-pass" placeholder="Mínimo 6 caracteres" 
-            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
-    </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-zinc-500 uppercase">Senha</label>
+                    <input type="password" id="emp-pass" placeholder="Mínimo 6 caracteres" 
+                        class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-600">
+                </div>
 
-    <div class="flex justify-between items-center pt-4 border-t border-zinc-800">
-        <button type="button" id="btn-delete-emp" class="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1 hidden">
-            <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
-        </button>
-        <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg font-medium shadow-lg transition-all active:scale-95">Salvar Funcionário</button>
-    </div>
-</form>
+                <div class="space-y-4 pt-4 border-t border-zinc-800">
+                    <h3 class="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                        <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i> Horários & Permissões
+                    </h3>
+
+                    <div class="flex items-center justify-between p-3 bg-red-500/10 border border-red-900/30 rounded-xl">
+                        <div>
+                            <h4 class="text-sm font-bold text-red-500">Bloquear Acesso</h4>
+                            <p class="text-[10px] text-zinc-400 mt-0.5">Impede de fazer login, alterar dados ou receber agendamentos.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="emp-blocked" class="sr-only peer">
+                            <div class="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-zinc-500 uppercase">Dias de Trabalho</label>
+                        <div class="flex flex-wrap gap-2" id="emp-days-container"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-zinc-500 uppercase">Expediente</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="time" id="emp-work-start" value="09:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-600">
+                                <span class="text-zinc-600">-</span>
+                                <input type="time" id="emp-work-end" value="20:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-600">
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-zinc-500 uppercase">Pausa (Almoço)</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="time" id="emp-lunch-start" value="12:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-600">
+                                <span class="text-zinc-600">-</span>
+                                <input type="time" id="emp-lunch-end" value="13:00" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-600">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-zinc-800 mt-4">
+                    <button type="button" id="btn-delete-emp" class="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1 hidden">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
+                    </button>
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg font-medium shadow-lg transition-all active:scale-95 ml-auto">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 

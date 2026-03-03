@@ -29,7 +29,8 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Toggle Switch Manual */
+/* Toggle Switch Genérico */
+.toggle-label-generic::after,
 #toggle-label-promo::after {
     content: '';
     position: absolute;
@@ -42,11 +43,21 @@ body {
     transition: transform 0.2s;
 }
 
+/* Cor do Toggle de Promoção (Amarelo) */
 #form-is-promo:checked + #toggle-label-promo {
     background-color: #f59e0b; /* amber-500 */
 }
 
 #form-is-promo:checked + #toggle-label-promo::after {
+    transform: translateX(20px);
+}
+
+/* Cor do Toggle Ativo/Suspenso (Verde) */
+#form-is-active:checked + #toggle-label-active {
+    background-color: #10b981; /* emerald-500 */
+}
+
+#form-is-active:checked + #toggle-label-active::after {
     transform: translateX(20px);
 }
 

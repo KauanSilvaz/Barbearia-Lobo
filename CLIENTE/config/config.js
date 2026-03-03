@@ -21,7 +21,7 @@ const functions = firebase.functions();
 // --- ESTADO DA APLICAÇÃO ---
 let employees = [];
 let gallery = [];
-let categories = []; // Estado para as categorias dinâmicas
+let categories = []; 
 const daysOfWeek = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 // --- APP CONTROLLER ---
@@ -32,10 +32,11 @@ const app = {
 
         app.listenToTeam();
         app.listenToGallery();
-        app.listenToCategories(); // Inicia a escuta das categorias
+        app.listenToCategories(); 
         app.loadCompany();
         app.loadSchedule();
         app.renderDays();
+        app.renderEmpDays(); // Nova função para os dias do barbeiro
         lucide.createIcons();
         
         const form = document.getElementById('employee-form');
@@ -78,16 +79,19 @@ const app = {
         grid.innerHTML = '';
         employees.forEach(emp => {
             const card = document.createElement('div');
-            card.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex items-center justify-between group hover:border-zinc-700 transition-colors";
             
-            // Lógica para usar a foto de perfil ou um avatar padrão
+            // Lógica de visual para usuário bloqueado
+            const blockedStyle = emp.isBlocked ? 'opacity-75 border-red-900/50' : 'border-zinc-800 hover:border-zinc-700';
+            card.className = `bg-zinc-900 border p-4 rounded-xl flex items-center justify-between group transition-colors ${blockedStyle}`;
+            
             const photoUrl = emp.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.name || 'default'}`;
+            const badge = emp.isBlocked ? `<span class="bg-red-500/20 text-red-500 text-[9px] px-2 py-0.5 rounded-full font-bold ml-2 border border-red-500/20 uppercase">Bloqueado</span>` : '';
             
             card.innerHTML = `
                 <div class="flex items-center gap-4">
                     <img src="${photoUrl}" alt="${emp.name}" class="w-12 h-12 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800 flex-shrink-0">
                     <div>
-                        <h3 class="font-bold text-white text-sm">${emp.name}</h3>
+                        <h3 class="font-bold text-white text-sm flex items-center">${emp.name} ${badge}</h3>
                         <p class="text-xs text-zinc-500">${emp.role} • ${emp.spec || 'Geral'}</p>
                     </div>
                 </div>
@@ -105,7 +109,14 @@ const app = {
         document.getElementById('modal-title').innerText = 'Novo Funcionário';
         document.getElementById('btn-delete-emp').classList.add('hidden');
         
-        // Reseta o preview da foto para o padrão
+        // Resetando os novos campos
+        if(document.getElementById('emp-blocked')) document.getElementById('emp-blocked').checked = false;
+        if(document.getElementById('emp-work-start')) document.getElementById('emp-work-start').value = '09:00';
+        if(document.getElementById('emp-work-end')) document.getElementById('emp-work-end').value = '20:00';
+        if(document.getElementById('emp-lunch-start')) document.getElementById('emp-lunch-start').value = '12:00';
+        if(document.getElementById('emp-lunch-end')) document.getElementById('emp-lunch-end').value = '13:00';
+        app.renderEmpDays(); // Reseta os dias para o padrão
+        
         if (app.updateEmployeePhotoPreview) {
             app.updateEmployeePhotoPreview('');
         }
@@ -125,10 +136,33 @@ const app = {
             document.getElementById('emp-role').value = emp.role;
             document.getElementById('emp-spec').value = emp.spec || '';
             document.getElementById('emp-email').value = emp.email;
-            // Dentro de editEmployee, adicione:
             document.getElementById('emp-pass').value = emp.password || '';
             
-            // Carrega a URL da foto no input e atualiza o preview
+            // Popula os novos campos de horário e bloqueio
+            if(document.getElementById('emp-blocked')) document.getElementById('emp-blocked').checked = emp.isBlocked || false;
+            
+            if(emp.schedule) {
+                document.getElementById('emp-work-start').value = emp.schedule.workStart || '09:00';
+                document.getElementById('emp-work-end').value = emp.schedule.workEnd || '20:00';
+                document.getElementById('emp-lunch-start').value = emp.schedule.lunchStart || '12:00';
+                document.getElementById('emp-lunch-end').value = emp.schedule.lunchEnd || '13:00';
+                
+                // Marca os dias específicos desse funcionário
+                const checkboxes = document.querySelectorAll('#emp-days-container input');
+                checkboxes.forEach(input => {
+                    const isDayActive = emp.schedule.days ? emp.schedule.days.includes(input.value) : (input.value !== 'Dom');
+                    input.checked = isDayActive;
+                    const label = input.parentElement;
+                    if (isDayActive) {
+                        label.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-amber-500/10 border-amber-500/50 text-amber-500";
+                    } else {
+                        label.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-zinc-900 border-zinc-800 text-zinc-500";
+                    }
+                });
+            } else {
+                app.renderEmpDays(); // Se for um usuário antigo que não tem agenda salva, reseta para o padrão
+            }
+            
             const photoInput = document.getElementById('emp-photo-url');
             if(photoInput) {
                 photoInput.value = emp.photoUrl || '';
@@ -156,81 +190,80 @@ const app = {
             img.classList.remove('hidden');
             placeholder.classList.add('hidden');
             
-            // Fallback caso a imagem não carregue
             img.onerror = () => {
                 img.src = defaultAvatar;
             };
         } else {
-            // Se não tiver URL, exibe o avatar padrão
             img.src = defaultAvatar;
             img.classList.remove('hidden');
             placeholder.classList.add('hidden');
         }
     },
 
-saveEmployee: async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('emp-id').value;
-    const btn = e.submitter;
-    
-    const photoInput = document.getElementById('emp-photo-url');
-    const photoUrl = photoInput ? photoInput.value : '';
-    
-    // Captura a senha do input
-    const passInput = document.getElementById('emp-pass');
-    const password = passInput ? passInput.value : '';
+    saveEmployee: async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('emp-id').value;
+        const btn = e.submitter;
+        
+        const photoInput = document.getElementById('emp-photo-url');
+        const photoUrl = photoInput ? photoInput.value : '';
+        const passInput = document.getElementById('emp-pass');
+        const password = passInput ? passInput.value : '';
 
-    const employeeData = {
-        name: document.getElementById('emp-name').value,
-        role: document.getElementById('emp-role').value,
-        spec: document.getElementById('emp-spec').value,
-        email: document.getElementById('emp-email').value,
-        photoUrl: photoUrl,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+        // Pega os dias selecionados no modal
+        const activeEmpDays = Array.from(document.querySelectorAll('#emp-days-container input:checked')).map(i => i.value);
 
-    // Só adiciona a senha se ela foi preenchida 
-    if (password) {
-        employeeData.password = password; 
-    }
+        const employeeData = {
+            name: document.getElementById('emp-name').value,
+            role: document.getElementById('emp-role').value,
+            spec: document.getElementById('emp-spec').value,
+            email: document.getElementById('emp-email').value,
+            photoUrl: photoUrl,
+            isBlocked: document.getElementById('emp-blocked') ? document.getElementById('emp-blocked').checked : false,
+            schedule: {
+                days: activeEmpDays,
+                workStart: document.getElementById('emp-work-start').value,
+                workEnd: document.getElementById('emp-work-end').value,
+                lunchStart: document.getElementById('emp-lunch-start').value,
+                lunchEnd: document.getElementById('emp-lunch-end').value,
+            },
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
-    btn.disabled = true;
-    const originalText = btn.innerText;
-    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
-    if (window.lucide) lucide.createIcons();
+        if (password) {
+            employeeData.password = password; 
+        }
 
-    try {
-        if (id) {
-            // Atualiza funcionário existente
-            await db.collection("employees").doc(id).update(employeeData);
-        } else {
-            // Cria novo funcionário no Firestore
-            // Como não temos mais Cloud Functions, usamos a senha aqui temporariamente
-             if (!password || password.length < 6) {
-                alert("A senha é obrigatória para novos usuários e deve ter no mínimo 6 caracteres.");
-                throw new Error("Senha inválida");
+        btn.disabled = true;
+        const originalText = btn.innerText;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
+        if (window.lucide) lucide.createIcons();
+
+        try {
+            if (id) {
+                await db.collection("employees").doc(id).update(employeeData);
+            } else {
+                 if (!password || password.length < 6) {
+                    alert("A senha é obrigatória para novos usuários e deve ter no mínimo 6 caracteres.");
+                    throw new Error("Senha inválida");
+                }
+                employeeData.needsAuthCreation = true;
+                employeeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                await db.collection("employees").add(employeeData);
             }
             
-            // Adicionamos a flag 'needsAuthCreation' para o sistema de login saber
-            employeeData.needsAuthCreation = true;
-            employeeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            if(passInput) passInput.value = '';
+            app.closeEmployeeModal();
             
-            await db.collection("employees").add(employeeData);
+        } catch (error) {
+            console.error("Erro ao salvar no Firestore:", error);
+            alert(error.message || "Erro ao salvar dados.");
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            if (window.lucide) lucide.createIcons();
         }
-        
-        // Limpa a senha do form e fecha
-        if(passInput) passInput.value = '';
-        app.closeEmployeeModal();
-        
-    } catch (error) {
-        console.error("Erro ao salvar no Firestore:", error);
-        alert(error.message || "Erro ao salvar dados.");
-    } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-        if (window.lucide) lucide.createIcons();
-    }
-},
+    },
 
     deleteEmployee: async (id) => {
         if(confirm('Remover este funcionário?')) {
@@ -267,16 +300,37 @@ saveEmployee: async (e) => {
         });
     },
 
+    renderEmpDays: () => {
+        const container = document.getElementById('emp-days-container');
+        if(!container) return;
+        container.innerHTML = '';
+        daysOfWeek.forEach(day => {
+            const label = document.createElement('label');
+            const isDefaultActive = day !== 'Dom'; // Padrão
+            
+            label.className = `cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 ${isDefaultActive ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`;
+            label.innerHTML = `<input type="checkbox" class="hidden" value="${day}" ${isDefaultActive ? 'checked' : ''}>${day}`;
+            
+            label.addEventListener('change', function() {
+                const chk = this.querySelector('input');
+                if (chk.checked) {
+                    this.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-amber-500/10 border-amber-500/50 text-amber-500";
+                } else {
+                    this.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-zinc-900 border-zinc-800 text-zinc-500";
+                }
+            });
+            container.appendChild(label);
+        });
+    },
+
     loadSchedule: async () => {
         try {
             const doc = await db.collection("settings").doc("schedule").get();
             if (doc.exists) {
                 const data = doc.data();
                 
-                document.getElementById('sched-open').value = data.open || "09:00";
-                document.getElementById('sched-close').value = data.close || "20:00";
-                document.getElementById('sched-lunch-start').value = data.lunchStart || "13:00";
-                document.getElementById('sched-lunch-end').value = data.lunchEnd || "14:00";
+                if(document.getElementById('sched-open')) document.getElementById('sched-open').value = data.open || "09:00";
+                if(document.getElementById('sched-close')) document.getElementById('sched-close').value = data.close || "20:00";
 
                 if (data.days) {
                     const checkboxes = document.querySelectorAll('#days-container input');
@@ -304,8 +358,6 @@ saveEmployee: async (e) => {
             days: activeDays,
             open: document.getElementById('sched-open').value,
             close: document.getElementById('sched-close').value,
-            lunchStart: document.getElementById('sched-lunch-start').value,
-            lunchEnd: document.getElementById('sched-lunch-end').value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -318,8 +370,34 @@ saveEmployee: async (e) => {
     },
 
     // --- GESTÃO DA EMPRESA ---
+    
+    // NOVO: Função para o preview da logo
+    updateCompanyLogoPreview: (url) => {
+        const img = document.getElementById('comp-logo-preview');
+        const placeholder = document.getElementById('comp-logo-placeholder');
+        const defaultLogo = `https://ui-avatars.com/api/?name=Logo&background=27272a&color=f4f4f5`;
+
+        if (!img || !placeholder) return;
+
+        if (url && url.startsWith('http')) {
+            img.src = url;
+            img.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            
+            img.onerror = () => {
+                img.src = defaultLogo;
+            };
+        } else {
+            img.src = defaultLogo;
+            img.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+    },
+
     saveCompany: async () => {
         const companyData = {
+            logoUrl: document.getElementById('comp-logo').value, // NOVO
+            mapsUrl: document.getElementById('comp-maps').value, // NOVO
             about: document.getElementById('comp-about').value,
             phone: document.getElementById('comp-phone').value,
             email: document.getElementById('comp-email').value,
@@ -339,16 +417,23 @@ saveEmployee: async (e) => {
             const doc = await db.collection("settings").doc("company").get();
             if (doc.exists) {
                 const data = doc.data();
+                if(document.getElementById('comp-logo')) document.getElementById('comp-logo').value = data.logoUrl || ""; // NOVO
+                if(document.getElementById('comp-maps')) document.getElementById('comp-maps').value = data.mapsUrl || ""; // NOVO
                 if(document.getElementById('comp-about')) document.getElementById('comp-about').value = data.about || "";
                 if(document.getElementById('comp-phone')) document.getElementById('comp-phone').value = data.phone || "";
                 if(document.getElementById('comp-email')) document.getElementById('comp-email').value = data.email || "";
+
+                // NOVO: Atualiza a imagem de preview assim que os dados carregam
+                if (app.updateCompanyLogoPreview) {
+                    app.updateCompanyLogoPreview(data.logoUrl || "");
+                }
             }
         } catch (error) {
             console.error("Erro ao carregar dados da empresa:", error);
         }
     },
 
-    // --- GESTÃO DE CATEGORIAS (NOVO) ---
+    // --- GESTÃO DE CATEGORIAS ---
     listenToCategories: () => {
         db.collection("categories").orderBy("name").onSnapshot((snapshot) => {
             categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
