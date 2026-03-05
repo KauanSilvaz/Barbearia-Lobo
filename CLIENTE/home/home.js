@@ -723,12 +723,3 @@ els.paymentForm.onsubmit = async (e) => {
 
 initFirebaseSync();
 
-const btnMobileMenu = document.getElementById('btn-mobile-menu');
-const mainNav = document.getElementById('main-nav');
-
-if (btnMobileMenu && mainNav) {
-    btnMobileMenu.addEventListener('click', () => {
-        mainNav.classList.toggle('hidden');
-        mainNav.classList.toggle('flex');
-    });
-}
