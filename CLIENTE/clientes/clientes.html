@@ -9,6 +9,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="clientes.css">
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
 </head>
 <body class="selection:bg-amber-500/30 overflow-hidden h-screen flex flex-col relative">
 
@@ -267,6 +269,13 @@
         window.dbMethods = { collection, getDocs, addDoc, serverTimestamp, query, where, doc, updateDoc, deleteDoc, onSnapshot };
     </script>
     <script src="../navbar/nav.js"></script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+</script>
     <script src="clientes.js"></script>
 </body>
 </html>

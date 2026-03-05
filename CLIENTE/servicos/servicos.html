@@ -9,6 +9,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="servicos.css">
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#000000">
 </head>
 <body class="bg-zinc-950 text-zinc-100 selection:bg-amber-500/30 overflow-y-auto custom-scrollbar relative">
 
@@ -206,6 +208,13 @@
         </div>
     </div>
     <script src="../navbar/nav.js"></script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+</script>
     <script type="module" src="servicos.js"></script>
 </body>
 </html>

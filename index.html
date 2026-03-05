@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#000000">
 </head>
 <body>
     <div class="login-wrapper">
@@ -42,6 +44,13 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+</script>
     <script type="module" src="auth.js"></script>
 </body>
 </html>
