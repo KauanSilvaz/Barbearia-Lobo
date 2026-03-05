@@ -134,12 +134,17 @@ function renderHeader(visibleBarbers) {
     els.gridHeader.innerHTML = '<div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/50"></div>';
     
     visibleBarbers.forEach(barber => {
+        // Verifica se o barbeiro tem foto, senão usa o avatar padrão
+        const avatarUrl = barber.photoUrl && barber.photoUrl.trim() !== '' 
+            ? barber.photoUrl 
+            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}`;
+
         const th = document.createElement('div');
         th.className = 'flex-1 min-w-[150px] p-3 text-center border-r border-zinc-800/50 text-zinc-200 font-medium text-sm bg-zinc-900/40';
         th.innerHTML = `
             <div class="flex flex-col items-center justify-center gap-2">
                 <div class="relative">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}" class="w-10 h-10 rounded-full bg-zinc-800 border-2 border-zinc-700">
+                    <img src="${avatarUrl}" alt="${barber.name}" class="w-10 h-10 rounded-full bg-zinc-800 border-2 border-zinc-700 object-cover">
                     <div class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-zinc-900"></div>
                 </div>
                 <span class="truncate w-full font-semibold tracking-wide">${barber.name}</span>
@@ -172,25 +177,42 @@ function renderGrid(visibleBarbers, currentDateStr) {
     const linesContent = document.createElement('div');
     linesContent.className = 'flex-1 relative';
 
+    // RENDERIZANDO DE 5 EM 5 MINUTOS COMO RÉGUA
     for (let h = startHour; h <= endHour; h++) {
-        const topPx = (h - startHour) * 60 * pixelsPerMinute + topPadding;
-        
-        const timeLabel = document.createElement('div');
-        timeLabel.className = 'absolute w-full text-center text-[11px] text-zinc-500 font-medium -mt-2';
-        timeLabel.style.top = `${topPx}px`;
-        timeLabel.textContent = `${h.toString().padStart(2, '0')}:00`;
-        timeCol.appendChild(timeLabel);
+        // Se for a última hora do dia, só renderiza o :00
+        const maxMinutes = (h === endHour) ? 0 : 55;
 
-        const hLine = document.createElement('div');
-        hLine.className = 'absolute w-[200vw] border-t border-zinc-800/30';
-        hLine.style.top = `${topPx}px`;
-        linesContent.appendChild(hLine);
-        
-        const hLineHalf = document.createElement('div');
-        hLineHalf.className = 'absolute w-[200vw] border-t border-zinc-800/10 border-dashed';
-        hLineHalf.style.top = `${topPx + (30 * pixelsPerMinute)}px`;
-        linesContent.appendChild(hLineHalf);
+        for (let m = 0; m <= maxMinutes; m += 5) {
+            const topPx = (h - startHour) * 60 * pixelsPerMinute + (m * pixelsPerMinute) + topPadding;
+            
+            const timeLabel = document.createElement('div');
+            timeLabel.style.top = `${topPx}px`;
+
+            const hLine = document.createElement('div');
+            hLine.style.top = `${topPx}px`;
+
+            if (m === 0) {
+                // HORA CHEIA
+                timeLabel.className = 'absolute w-full text-center text-[11px] text-zinc-300 font-bold -mt-2 z-10';
+                timeLabel.textContent = `${h.toString().padStart(2, '0')}:00`;
+                hLine.className = 'absolute w-[200vw] border-t border-zinc-700/60 z-10';
+            } else if (m === 30) {
+                // MEIA HORA
+                timeLabel.className = 'absolute w-full text-center text-[10px] text-zinc-500 font-medium -mt-1.5';
+                timeLabel.textContent = `${h.toString().padStart(2, '0')}:30`;
+                hLine.className = 'absolute w-[200vw] border-t border-zinc-800/50 border-dashed';
+            } else {
+                // INTERVALOS DE 5 MINUTOS
+                timeLabel.className = 'absolute w-full text-center text-[8px] text-zinc-700/70 font-medium -mt-1';
+                timeLabel.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                hLine.className = 'absolute w-[200vw] border-t border-zinc-800/20 border-dotted';
+            }
+
+            timeCol.appendChild(timeLabel);
+            linesContent.appendChild(hLine);
+        }
     }
+
     linesContainer.appendChild(linesContent);
     gridContainer.appendChild(timeCol);
 
@@ -221,7 +243,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
             const y = e.clientY - rect.top + els.gridBody.scrollTop - topPadding - offsetY;
 
             let newStartMins = (y / pixelsPerMinute) + (startHour * 60);
-            newStartMins = Math.max(startHour * 60, Math.floor(newStartMins / 15) * 15);
+            newStartMins = Math.max(startHour * 60, Math.floor(newStartMins / 5) * 5);
 
             const appt = state.appointments.find(a => a.id === apptId);
             if(!appt) return;
@@ -244,102 +266,152 @@ function renderGrid(visibleBarbers, currentDateStr) {
             const rect = bCol.getBoundingClientRect();
             const y = e.clientY - rect.top + els.gridBody.scrollTop - topPadding;
             let clickedMinuteOfDay = (y / pixelsPerMinute) + (startHour * 60);
-            clickedMinuteOfDay = Math.max(startHour * 60, Math.floor(clickedMinuteOfDay / 15) * 15);
+            clickedMinuteOfDay = Math.max(startHour * 60, Math.floor(clickedMinuteOfDay / 5) * 5);
             openModal({ barberId: barber.id, startTime: clickedMinuteOfDay });
         };
 
         const bBookings = todaysBookings.filter(b => b.barberId === barber.id);
         
-        bBookings.forEach(appt => {
+        // 1. Ordenar por horário de início
+        const sortedBookings = [...bBookings].sort((a, b) => a.startTime - b.startTime);
+
+        // 2. Agrupar agendamentos que se cruzam/sobrepõem
+        const groups = [];
+        let currentGroup = [];
+        let groupEnd = 0;
+
+        sortedBookings.forEach(appt => {
             const service = state.services.find(s => s.id === appt.serviceId) || {};
-            const clientUser = state.users.find(u => u.id === appt.userId);
-            const displayName = clientUser ? (clientUser.name || 'Usuário App') : (appt.clientName || 'Cliente Avulso');
-
-            const startMins = appt.startTime - (startHour * 60);
             const duration = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(service.duration) || 30);
-            
-            const topPx = (startMins * pixelsPerMinute) + topPadding;
-            const heightPx = duration * pixelsPerMinute;
+            const endTime = appt.startTime + duration;
 
-            let colorClasses = "border-l-zinc-500 bg-zinc-900 border-zinc-800";
-            let iconColor = "text-zinc-400";
-            let dotColor = "bg-zinc-500";
-            
-            if (service.complexity === "facil") {
-                colorClasses = "border-l-emerald-500 bg-zinc-900 border-zinc-800";
-                iconColor = "text-emerald-500";
-                dotColor = "bg-emerald-500";
+            if (currentGroup.length > 0 && appt.startTime >= groupEnd) {
+                groups.push(currentGroup);
+                currentGroup = [];
             }
-            if (service.complexity === "medio") {
-                colorClasses = "border-l-amber-500 bg-zinc-900 border-zinc-800";
-                iconColor = "text-amber-500";
-                dotColor = "bg-amber-500";
-            }
-            if (service.complexity === "dificil") {
-                colorClasses = "border-l-rose-500 bg-zinc-900 border-zinc-800";
-                iconColor = "text-rose-500";
-                dotColor = "bg-rose-500";
-            }
+            currentGroup.push({ appt, service, duration, endTime });
+            groupEnd = Math.max(groupEnd, endTime);
+        });
+        if (currentGroup.length > 0) groups.push(currentGroup);
 
-            let opacityClass = '';
-            let textDecorationClass = 'text-zinc-100';
-            
-            if (appt.status === 'completed') {
-                opacityClass = 'opacity-40 grayscale hover:grayscale-0 border-l-zinc-400 bg-zinc-800';
-                dotColor = 'bg-zinc-400';
-                textDecorationClass = 'line-through text-zinc-500';
-            }
+        // 3. Renderizar cada grupo dividindo o espaço
+        groups.forEach(group => {
+            const columns = [];
+            group.forEach(item => {
+                let placed = false;
+                for (let i = 0; i < columns.length; i++) {
+                    const lastInCol = columns[i][columns[i].length - 1];
+                    if (lastInCol.endTime <= item.appt.startTime) {
+                        columns[i].push(item);
+                        item.colIndex = i;
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    item.colIndex = columns.length;
+                    columns.push([item]);
+                }
+            });
 
-            const card = document.createElement('div');
-            card.className = `absolute left-1.5 right-1.5 rounded-lg p-2.5 text-xs border-l-[4px] border-t border-r border-b backdrop-blur-md shadow-lg transition-all overflow-hidden flex flex-col justify-between cursor-pointer hover:z-30 z-20 ${colorClasses} ${opacityClass}`;
-            card.style.top = `${topPx}px`;
-            card.style.height = `${Math.max(heightPx, 45)}px`;
+            const numCols = columns.length;
 
-            if (appt.status !== 'completed') {
-                card.draggable = true;
-                card.addEventListener('dragstart', (e) => {
-                    e.stopPropagation(); 
-                    e.dataTransfer.setData('text/plain', appt.id);
-                    const rect = card.getBoundingClientRect();
-                    e.dataTransfer.setData('offsetY', e.clientY - rect.top);
-                    setTimeout(() => card.classList.add('opacity-40'), 0); 
-                });
+            group.forEach(item => {
+                const { appt, service, duration } = item;
+                const clientUser = state.users.find(u => u.id === appt.userId);
+                const displayName = clientUser ? (clientUser.name || 'Usuário App') : (appt.clientName || 'Cliente Avulso');
+
+                const startMins = appt.startTime - (startHour * 60);
+                const topPx = (startMins * pixelsPerMinute) + topPadding;
+                const heightPx = duration * pixelsPerMinute;
+
+                let colorClasses = "border-l-zinc-500 bg-zinc-900 border-zinc-800";
+                let iconColor = "text-zinc-400";
+                let dotColor = "bg-zinc-500";
                 
-                card.addEventListener('dragend', () => {
-                    card.classList.remove('opacity-40');
-                });
-            }
+                if (service.complexity === "facil") {
+                    colorClasses = "border-l-emerald-500 bg-zinc-900 border-zinc-800";
+                    iconColor = "text-emerald-500";
+                    dotColor = "bg-emerald-500";
+                }
+                if (service.complexity === "medio") {
+                    colorClasses = "border-l-amber-500 bg-zinc-900 border-zinc-800";
+                    iconColor = "text-amber-500";
+                    dotColor = "bg-amber-500";
+                }
+                if (service.complexity === "dificil") {
+                    colorClasses = "border-l-rose-500 bg-zinc-900 border-zinc-800";
+                    iconColor = "text-rose-500";
+                    dotColor = "bg-rose-500";
+                }
 
-            card.innerHTML = `
-                <div class="flex flex-col gap-1 h-full">
-                    <div class="flex justify-between items-start gap-1">
-                        <div class="flex items-center gap-1.5 truncate">
-                            <div class="w-2 h-2 rounded-full ${dotColor} flex-shrink-0 shadow-sm"></div>
-                            <span class="font-bold truncate text-[12px] leading-tight ${textDecorationClass}">${displayName}</span>
-                        </div>
-                        ${appt.status === 'completed' 
-                            ? `<i data-lucide="check-check" class="w-4 h-4 flex-shrink-0 text-emerald-500"></i>` 
-                            : ``
-                        }
-                    </div>
+                let opacityClass = '';
+                let textDecorationClass = 'text-zinc-100';
+                
+                if (appt.status === 'completed') {
+                    opacityClass = 'opacity-40 grayscale hover:grayscale-0 border-l-zinc-400 bg-zinc-800';
+                    dotColor = 'bg-zinc-400';
+                    textDecorationClass = 'line-through text-zinc-500';
+                }
+
+                // Cálculo de espaço horizontal dinâmico
+                const widthPct = 100 / numCols;
+                const leftPct = item.colIndex * widthPct;
+
+                const card = document.createElement('div');
+                card.className = `absolute rounded-lg p-2.5 text-xs border-l-[4px] border-t border-r border-b backdrop-blur-md shadow-lg transition-all overflow-hidden flex flex-col justify-between cursor-pointer hover:z-30 z-20 ${colorClasses} ${opacityClass}`;
+                
+                card.style.top = `${topPx}px`;
+                card.style.height = `${Math.max(heightPx, 45)}px`;
+                card.style.left = `calc(${leftPct}% + 4px)`;
+                card.style.width = `calc(${widthPct}% - 8px)`;
+
+                if (appt.status !== 'completed') {
+                    card.draggable = true;
+                    card.addEventListener('dragstart', (e) => {
+                        e.stopPropagation(); 
+                        e.dataTransfer.setData('text/plain', appt.id);
+                        const rect = card.getBoundingClientRect();
+                        e.dataTransfer.setData('offsetY', e.clientY - rect.top);
+                        setTimeout(() => card.classList.add('opacity-40'), 0); 
+                    });
                     
-                    <div class="opacity-90 truncate text-[10px] leading-tight flex items-center gap-1 text-zinc-400">
-                        <i data-lucide="scissors" class="w-3 h-3 ${iconColor}"></i>
-                        ${service.name || appt.serviceName || 'Serviço'}
-                    </div>
+                    card.addEventListener('dragend', () => {
+                        card.classList.remove('opacity-40');
+                    });
+                }
 
-                    <div class="mt-auto font-mono text-[10px] bg-zinc-950/50 rounded px-1.5 py-0.5 inline-flex items-center gap-1 self-start text-zinc-400 border border-zinc-800/50">
-                        <i data-lucide="clock" class="w-3 h-3 opacity-70"></i>
-                        ${formatMinutesToTime(appt.startTime)} - ${formatMinutesToTime(appt.endTime || (appt.startTime + duration))}
-                    </div>
-                </div>
-            `;
+                card.innerHTML = `
+                    <div class="flex flex-col gap-1 h-full">
+                        <div class="flex justify-between items-start gap-1">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <div class="w-2 h-2 rounded-full ${dotColor} flex-shrink-0 shadow-sm"></div>
+                                <span class="font-bold truncate text-[12px] leading-tight ${textDecorationClass}">${displayName}</span>
+                            </div>
+                            ${appt.status === 'completed' 
+                                ? `<i data-lucide="check-check" class="w-4 h-4 flex-shrink-0 text-emerald-500"></i>` 
+                                : ``
+                            }
+                        </div>
+                        
+                        <div class="opacity-90 truncate text-[10px] leading-tight flex items-center gap-1 text-zinc-400">
+                            <i data-lucide="scissors" class="w-3 h-3 ${iconColor}"></i>
+                            ${service.name || appt.serviceName || 'Serviço'}
+                        </div>
 
-            card.onclick = (e) => {
-                e.stopPropagation();
-                openModal({ ...appt, displayName: clientUser ? displayName : appt.clientName });
-            };
-            bCol.appendChild(card);
+                        <div class="mt-auto font-mono text-[10px] bg-zinc-950/50 rounded px-1.5 py-0.5 inline-flex items-center gap-1 self-start text-zinc-400 border border-zinc-800/50">
+                            <i data-lucide="clock" class="w-3 h-3 opacity-70"></i>
+                            ${formatMinutesToTime(appt.startTime)} - ${formatMinutesToTime(appt.endTime || (appt.startTime + duration))}
+                        </div>
+                    </div>
+                `;
+
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    openModal({ ...appt, displayName: clientUser ? displayName : appt.clientName });
+                };
+                bCol.appendChild(card);
+            });
         });
 
         gridContainer.appendChild(bCol);

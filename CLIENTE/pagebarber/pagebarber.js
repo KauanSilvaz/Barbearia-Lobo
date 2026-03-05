@@ -31,6 +31,12 @@ const formatMinutesToTime = (minutes) => {
     return `${h}:${m}`;
 };
 
+const timeToMins = (timeStr) => {
+    if(!timeStr) return 0;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+};
+
 const app = {
     currentDate: new Date(),
     view: 'agenda',
@@ -38,6 +44,7 @@ const app = {
     historyData: [],
     users: [],
     services: [],
+    currentEmployee: null, // Armazena os dados do barbeiro atual
     isCreatingNewClient: false,
     currentPaymentTotal: 0,
 
@@ -59,6 +66,14 @@ const app = {
     },
 
     setupFirebaseListeners: () => {
+        // Escuta os dados do barbeiro logado (para saber horários e bloqueios)
+        onSnapshot(doc(db, "employees", loggedBarberId), (docSnap) => {
+            if (docSnap.exists()) {
+                app.currentEmployee = docSnap.data();
+                app.renderGrid(); // Atualiza a grelha sempre que o status mudar
+            }
+        });
+
         const qBookings = query(collection(db, "bookings"), where("barberId", "==", loggedBarberId));
         onSnapshot(qBookings, (snapshot) => {
             app.appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -119,9 +134,11 @@ const app = {
             if (a.date === todayStr) clientsTodayCount++;
         });
 
-        document.getElementById('metric-today-money').innerText = `€ ${moneyToday.toFixed(2)}`;
-        document.getElementById('metric-today-clients').innerHTML = `${clientsTodayCount} <span class="text-[10px] font-normal text-zinc-500">agendados</span>`;
-        document.getElementById('metric-month-money').innerText = `€ ${moneyMonth.toFixed(2)}`;
+        // Atualiza a UI para mostrar o Total e os 50% de comissão
+        document.getElementById('metric-today-money').innerHTML = `€ ${moneyToday.toFixed(2)} <span class="block text-[11px] text-emerald-400 mt-1 border-t border-zinc-700/50 pt-1">Teu: € ${(moneyToday * 0.5).toFixed(2)}</span>`;
+        document.getElementById('metric-month-money').innerHTML = `€ ${moneyMonth.toFixed(2)} <span class="block text-[11px] text-emerald-400 mt-1 border-t border-zinc-700/50 pt-1">Teu: € ${(moneyMonth * 0.5).toFixed(2)}</span>`;
+        
+        document.getElementById('metric-today-clients').innerHTML = `${clientsTodayCount} <span class="text-[10px] font-normal text-zinc-500 block mt-1">agendados</span>`;
         document.getElementById('metric-month-count').innerText = `${totalMonthCount}`;
     },
 
@@ -149,12 +166,64 @@ const app = {
     },
 
     renderGrid: () => {
+        const emp = app.currentEmployee;
+        if (!emp) return; // Aguarda carregar dados do barbeiro
+
         const header = document.getElementById('grid-header');
         const body = document.getElementById('grid-body');
         const dateDisplay = document.getElementById('current-date-display');
         
+        const todayStr = getLocalYYYYMMDD(new Date());
         const dateKey = getLocalYYYYMMDD(app.currentDate);
-        dateDisplay.innerText = getLocalYYYYMMDD(new Date()) === dateKey ? 'Hoje' : app.currentDate.toLocaleDateString('pt-PT', {day:'numeric', month:'short'});
+        dateDisplay.innerText = todayStr === dateKey ? 'Hoje' : app.currentDate.toLocaleDateString('pt-PT', {day:'numeric', month:'short'});
+
+        // REGRAS DE BLOQUEIO GERAL:
+        // 1. Se estiver bloqueado administrativamente
+        if (emp.isBlocked) {
+            body.innerHTML = `
+                <div class="h-full w-full bg-red-950/20 flex flex-col items-center justify-center p-6 text-center">
+                    <div class="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-4 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                        <i data-lucide="lock" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-red-500 uppercase tracking-widest">Acesso Bloqueado</h2>
+                    <p class="text-sm text-red-400 mt-2 max-w-xs">Acesso restrito pela gerência. Não podes operar na agenda. Podes apenas consultar o teu histórico.</p>
+                </div>`;
+            header.innerHTML = '';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+
+        // 2. Verifica se AGORA está dentro do seu horário de trabalho real (para uso do sistema)
+        const now = new Date();
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+        const realDayStr = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][now.getDay()];
+        
+        const worksRealToday = emp.schedule?.days?.includes(realDayStr) ?? true;
+        const workStartMins = timeToMins(emp.schedule?.workStart || '09:00');
+        const workEndMins = timeToMins(emp.schedule?.workEnd || '20:00');
+        
+        const isCurrentlyWorking = worksRealToday && (nowMins >= workStartMins && nowMins <= workEndMins);
+
+        if (!isCurrentlyWorking) {
+            body.innerHTML = `
+                <div class="h-full w-full bg-red-950/20 flex flex-col items-center justify-center p-6 text-center">
+                    <div class="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-4 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                        <i data-lucide="clock-8" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-red-500 uppercase tracking-widest">Fora do Horário</h2>
+                    <p class="text-sm text-red-400 mt-2 max-w-sm">O sistema só pode ser utilizado no teu horário e dias de trabalho definidos.<br><strong class="text-white mt-1 block">Expediente: ${emp.schedule?.workStart || '09:00'} às ${emp.schedule?.workEnd || '20:00'}</strong></p>
+                </div>`;
+            header.innerHTML = '';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+
+        // Se passar as regras de bloqueio, renderiza a agenda normal
+        const targetDayStr = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][app.currentDate.getDay()];
+        const worksTargetDate = emp.schedule?.days?.includes(targetDayStr) ?? true;
+        const lunchStartMins = timeToMins(emp.schedule?.lunchStart || '12:00');
+        const lunchEndMins = timeToMins(emp.schedule?.lunchEnd || '13:00');
+        const isPastDate = dateKey < todayStr; // Imutabilidade de dados passados
 
         header.innerHTML = `
             <div class="w-16 border-r border-zinc-800/50 bg-zinc-900/50"></div>
@@ -167,13 +236,13 @@ const app = {
         HOURS.forEach(hour => {
             const hourMins = hour * 60;
             const apptsInSlot = app.appointments.filter(a => a.date === dateKey && Math.floor(a.startTime / 60) === hour);
-            
             apptsInSlot.sort((a, b) => a.startTime - b.startTime);
 
             const row = document.createElement('div');
             row.className = 'flex min-h-[80px] border-b border-zinc-800/50 relative';
             
             let slotsHTML = '';
+            const isWorkingSlot = worksTargetDate && (hourMins >= workStartMins && hourMins < workEndMins) && !(hourMins >= lunchStartMins && hourMins < lunchEndMins);
             
             if (apptsInSlot.length > 0) {
                 apptsInSlot.forEach(appt => {
@@ -184,7 +253,6 @@ const app = {
                     const clientName = appt.clientName || 'Cliente';
                     const serviceObj = app.services.find(s => s.id === appt.serviceId);
                     const serviceName = serviceObj?.name || appt.serviceName || 'Serviço';
-                    
                     const durationMins = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(serviceObj?.duration) || 30);
                     const endTimeDisplay = formatMinutesToTime(appt.startTime + durationMins);
 
@@ -202,10 +270,20 @@ const app = {
                         </div>`;
                 });
             } else {
-                slotsHTML = `
-                    <div class="w-full h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer" onclick="app.openModal(null, ${hourMins})">
-                        <div class="text-[10px] text-zinc-600 font-medium">+ Adicionar</div>
+                if (isPastDate) {
+                    slotsHTML = `<div class="w-full h-full flex items-center justify-center opacity-30 cursor-not-allowed select-none">
+                        <div class="text-[10px] text-zinc-600 font-medium">PASSADO</div>
                     </div>`;
+                } else if (!isWorkingSlot) {
+                    slotsHTML = `<div class="w-full h-full flex items-center justify-center opacity-30 cursor-not-allowed select-none bg-red-950/10 rounded-lg">
+                        <div class="text-[10px] text-red-900/50 font-bold uppercase">Folga/Pausa</div>
+                    </div>`;
+                } else {
+                    slotsHTML = `
+                        <div class="w-full h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer bg-zinc-800/20 rounded-lg border border-dashed border-zinc-700 hover:border-amber-500/50" onclick="app.openModal(null, ${hourMins})">
+                            <div class="text-[10px] text-amber-500 font-medium">+ Adicionar</div>
+                        </div>`;
+                }
             }
 
             row.innerHTML = `
@@ -263,59 +341,73 @@ const app = {
     },
 
     openModal: (id = null, startMins = null) => {
+        // Trava de segurança extra
+        if (app.currentEmployee?.isBlocked) return;
+
         const form = document.getElementById('appt-form');
         const actions = document.getElementById('edit-actions');
         const saveBtn = document.getElementById('btn-save');
         
+        const todayStr = getLocalYYYYMMDD(new Date());
+        const dateKey = getLocalYYYYMMDD(app.currentDate);
+        const isPastDate = dateKey < todayStr;
+
+        if (isPastDate && !id) {
+            alert("Não é possível adicionar agendamentos no passado.");
+            return;
+        }
+
         form.reset();
-        
-        // Reset do formulário de novo cliente
         app.isCreatingNewClient = false;
         document.getElementById('client-select-container').classList.remove('hidden');
         document.getElementById('new-client-container').classList.add('hidden');
         document.getElementById('btn-toggle-client').innerHTML = `<i data-lucide="user-plus" class="w-3 h-3"></i> <span id="text-toggle-client">Novo Cliente</span>`;
         document.getElementById('appt-client').setAttribute('required', 'true');
         document.getElementById('new-client-name').removeAttribute('required');
-        document.getElementById('new-client-name').value = '';
-        document.getElementById('new-client-phone').value = '';
 
         document.getElementById('appt-id').value = '';
-        document.getElementById('appt-date').value = getLocalYYYYMMDD(app.currentDate);
+        document.getElementById('appt-date').value = dateKey;
         
-        // Define a hora baseado no clique ou usa 09:00 como padrão
         if (startMins !== null) {
             document.getElementById('appt-time').value = formatMinutesToTime(startMins);
         } else {
             document.getElementById('appt-time').value = "09:00";
         }
 
+        let currentAppt = null;
         if (id) {
-            const appt = app.appointments.find(a => a.id === id);
-            if(appt) {
-                document.getElementById('appt-id').value = appt.id;
-                document.getElementById('appt-client').value = appt.userId || '';
-                document.getElementById('appt-service').value = appt.serviceId || '';
-                document.getElementById('appt-date').value = appt.date;
-                // Converte os minutos salvos de volta para o formato de input (HH:MM)
-                document.getElementById('appt-time').value = formatMinutesToTime(appt.startTime);
-                
+            currentAppt = app.appointments.find(a => a.id === id);
+            if(currentAppt) {
+                document.getElementById('appt-id').value = currentAppt.id;
+                document.getElementById('appt-client').value = currentAppt.userId || '';
+                document.getElementById('appt-service').value = currentAppt.serviceId || '';
+                document.getElementById('appt-date').value = currentAppt.date;
+                document.getElementById('appt-time').value = formatMinutesToTime(currentAppt.startTime);
+            }
+        }
+
+        // Regra de Imutabilidade: Oculta botões se for do Passado OU se já estiver Concluído
+        const isReadOnly = isPastDate || (currentAppt && currentAppt.status === 'completed');
+        const formInputs = document.querySelectorAll('#appt-form input:not(#appt-id), #appt-form select');
+        formInputs.forEach(input => input.disabled = isReadOnly);
+        document.getElementById('btn-toggle-client').style.display = isReadOnly ? 'none' : 'flex';
+
+        if (isReadOnly) {
+            document.getElementById('modal-title').innerText = (currentAppt && currentAppt.status === 'completed') ? 'Agendamento (Concluído)' : 'Agendamento (Apenas Leitura)';
+            actions.classList.add('hidden');
+            saveBtn.classList.add('hidden');
+        } else {
+            if (id) {
                 document.getElementById('modal-title').innerText = 'Gerir Agendamento';
                 actions.classList.remove('hidden');
                 saveBtn.innerText = 'Atualizar Agendamento';
-
-                if (appt.status === 'completed') {
-                    actions.querySelector('button[onclick="app.openPaymentModal()"]').classList.add('hidden');
-                    saveBtn.classList.add('hidden');
-                } else {
-                    actions.querySelector('button[onclick="app.openPaymentModal()"]').classList.remove('hidden');
-                    saveBtn.classList.remove('hidden');
-                }
+                saveBtn.classList.remove('hidden');
+            } else {
+                document.getElementById('modal-title').innerText = 'Novo Agendamento';
+                actions.classList.add('hidden');
+                saveBtn.classList.remove('hidden');
+                saveBtn.innerText = 'Salvar Agendamento';
             }
-        } else {
-            document.getElementById('modal-title').innerText = 'Novo Agendamento';
-            actions.classList.add('hidden');
-            saveBtn.classList.remove('hidden');
-            saveBtn.innerText = 'Salvar Agendamento';
         }
 
         document.getElementById('appointment-modal').classList.remove('hidden');
@@ -324,6 +416,14 @@ const app = {
     closeModal: () => document.getElementById('appointment-modal').classList.add('hidden'),
 
     saveAppt: async () => {
+        // Validações de segurança
+        if (app.currentEmployee?.isBlocked) return;
+        const apptDate = document.getElementById('appt-date').value;
+        if (apptDate < getLocalYYYYMMDD(new Date())) {
+            alert("Não é possível salvar informações em dias passados.");
+            return;
+        }
+
         const id = document.getElementById('appt-id').value;
         const service = app.services.find(s => s.id === document.getElementById('appt-service').value);
         
@@ -353,21 +453,17 @@ const app = {
             userId = user.id;
         }
 
-        // Lê a hora do input "HH:MM" e converte para total de minutos
         const timeInput = document.getElementById('appt-time').value;
-        const [hours, minutes] = timeInput.split(':').map(Number);
-        const startMins = (hours * 60) + minutes;
-        
-        // Duração precisa calculada com base no serviço
+        const startMins = timeToMins(timeInput);
         const durationMins = Number(service.duration) || 30;
 
         const bookingData = {
             barberId: loggedBarberId,
             barberName: loggedBarberName,
             companyId: "sami", 
-            date: document.getElementById('appt-date').value,
+            date: apptDate,
             startTime: startMins,
-            endTime: startMins + durationMins, // Calcula e salva a hora exata do fim
+            endTime: startMins + durationMins, 
             price: service.price || 0,
             serviceId: service.id,
             serviceName: service.name,
@@ -392,11 +488,19 @@ const app = {
     },
 
     openPaymentModal: () => {
+        if (app.currentEmployee?.isBlocked) return;
+        
         const id = document.getElementById('appt-id').value;
         if (!id) return;
         
         const booking = app.appointments.find(a => a.id === id);
         if (!booking) return;
+
+        // Regra do Passado para Pagamentos
+        if (booking.date < getLocalYYYYMMDD(new Date())) {
+            alert("Este agendamento pertence ao passado e é imutável.");
+            return;
+        }
 
         app.closeModal(); 
         
@@ -529,8 +633,24 @@ const app = {
     },
 
     deleteAppt: async () => {
+        if (app.currentEmployee?.isBlocked) return;
+        
         const id = document.getElementById('appt-id').value;
         if (!id) return;
+        
+        const booking = app.appointments.find(a => a.id === id);
+        
+        // Proteção extra no backend-side (Firestore call)
+        if (booking) {
+            if (booking.date < getLocalYYYYMMDD(new Date())) {
+                alert("Não é possível excluir agendamentos passados.");
+                return;
+            }
+            if (booking.status === 'completed') {
+                alert("Não é possível excluir um agendamento já concluído.");
+                return;
+            }
+        }
 
         if (confirm("Tem certeza que deseja excluir este agendamento?")) {
             try {

@@ -2,10 +2,19 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebas
 import { 
     getAuth, 
     signInWithEmailAndPassword, 
-    sendPasswordResetEmail 
+    sendPasswordResetEmail,
+    signOut
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+// 1. Importar as funções corretas para fazer query (pesquisa) no Firestore
+import { 
+    getFirestore, 
+    collection, 
+    query, 
+    where, 
+    getDocs 
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// 1. A tua configuração do Firebase
+// 2. A sua configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAmljKXhjb9GlY1ABEA-GPJqNsftsv_hVk",
   authDomain: "ksstech-79520.firebaseapp.com",
@@ -16,11 +25,12 @@ const firebaseConfig = {
   measurementId: "G-TM49C8N0T1"
 };
 
-// 2. Inicializar Firebase
+// 3. Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
-// 3. Configuração padrão dos Alertas (SweetAlert2)
+// 4. Configuração padrão dos Alertas (SweetAlert2)
 const Toast = Swal.mixin({
     background: '#121212',
     color: '#ffffff',
@@ -45,21 +55,58 @@ loginForm.addEventListener('submit', async (e) => {
     btnLogin.innerText = "A AUTENTICAR...";
 
     try {
+        // 1. Faz o login no Firebase Auth
         await signInWithEmailAndPassword(auth, email, password);
-        
-        // Sucesso: Redireciona para o painel administrativo
-        window.location.href = "./CLIENTE/home/home.html"; 
+
+        // 2. Faz uma pesquisa (query) na coleção 'employees' à procura deste e-mail
+        const employeesRef = collection(db, "employees");
+        const q = query(employeesRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        // Verifica se encontrou algum documento com este e-mail
+        if (!querySnapshot.empty) {
+            // Como o e-mail deve ser único, pegamos no primeiro documento retornado [0]
+            const userData = querySnapshot.docs[0].data();
+            
+            // 3. Verifica se o funcionário está bloqueado
+            if (userData.isBlocked === true) {
+                await signOut(auth); // Desloga imediatamente
+                throw new Error("usuario_bloqueado");
+            }
+
+            // 4. Verifica se o array 'role' existe e se inclui 'Gerente'
+            if (userData.role && userData.role.includes('Gerente')) {
+                // Sucesso: É gerente e não está bloqueado. Redireciona!
+                window.location.href = "./CLIENTE/home/home.html"; 
+            } else {
+                // Falha: Não tem a permissão de gerente
+                await signOut(auth);
+                throw new Error("sem_permissao");
+            }
+        } else {
+            // Falha: Não existe nenhum documento com este e-mail na coleção employees
+            await signOut(auth);
+            throw new Error("sem_cadastro");
+        }
+
     } catch (error) {
+        // Restaura o botão em caso de erro
         btnLogin.disabled = false;
         btnLogin.innerText = "ACESSAR PAINEL";
 
         let mensagemErro = "Ocorreu um erro ao tentar entrar.";
         
-        // Tratamento de erros comuns em pt-PT
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        // Tratamento de erros detalhado
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
             mensagemErro = "E-mail ou palavra-passe incorretos.";
         } else if (error.code === 'auth/too-many-requests') {
             mensagemErro = "Demasiadas tentativas. Tente mais tarde.";
+        } else if (error.message === "sem_permissao") {
+            mensagemErro = "Acesso negado. Apenas gerentes podem entrar neste painel.";
+        } else if (error.message === "sem_cadastro") {
+            mensagemErro = "Erro: Registo de funcionário não encontrado no sistema.";
+        } else if (error.message === "usuario_bloqueado") {
+            mensagemErro = "Acesso negado. Esta conta encontra-se bloqueada.";
         }
 
         Toast.fire({

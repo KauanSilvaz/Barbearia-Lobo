@@ -22,8 +22,27 @@ let services = [];
 let categories = []; 
 let currentFilter = 'all';
 
+const syncCompanyLogo = () => {
+    const watermarkImg = document.getElementById('watermark-img');
+    const headerLogo = document.getElementById('header-logo');
+
+    if (!watermarkImg && !headerLogo) return;
+
+    onSnapshot(doc(db, "settings", "company"), (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data.logoUrl) {
+                if (watermarkImg) watermarkImg.src = data.logoUrl;
+                if (headerLogo) headerLogo.src = data.logoUrl;
+            }
+        }
+    });
+};
+
 const app = {
     init: () => {
+        syncCompanyLogo();
+
         onSnapshot(collection(db, "services"), (snapshot) => {
             services = [];
             snapshot.forEach((doc) => {

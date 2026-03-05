@@ -27,8 +27,21 @@ const daysOfWeek = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 // --- APP CONTROLLER ---
 const app = {
     init: () => {
+        app.syncCompanyLogo();
+
         const galleryForm = document.getElementById('gallery-form');
         if(galleryForm) galleryForm.onsubmit = app.handleGallerySubmit;
+
+        // Lógica de estilo dos checkboxes de função
+        document.querySelectorAll('.role-checkbox').forEach(chk => {
+            chk.addEventListener('change', function() {
+                if (this.checked) {
+                    this.parentElement.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-amber-500/10 border-amber-500/50 text-amber-500";
+                } else {
+                    this.parentElement.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-zinc-900 border-zinc-800 text-zinc-500";
+                }
+            });
+        });
 
         app.listenToTeam();
         app.listenToGallery();
@@ -36,11 +49,28 @@ const app = {
         app.loadCompany();
         app.loadSchedule();
         app.renderDays();
-        app.renderEmpDays(); // Nova função para os dias do barbeiro
+        app.renderEmpDays(); 
         lucide.createIcons();
         
         const form = document.getElementById('employee-form');
         if(form) form.onsubmit = app.saveEmployee;
+    },
+
+    syncCompanyLogo: () => {
+        const watermarkImg = document.getElementById('watermark-img');
+        const headerLogo = document.getElementById('header-logo');
+
+        if (!watermarkImg && !headerLogo) return;
+
+        db.collection("settings").doc("company").onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                if (data.logoUrl) {
+                    if (watermarkImg) watermarkImg.src = data.logoUrl;
+                    if (headerLogo) headerLogo.src = data.logoUrl;
+                }
+            }
+        });
     },
 
     // --- NAVEGAÇÃO ---
@@ -87,12 +117,14 @@ const app = {
             const photoUrl = emp.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.name || 'default'}`;
             const badge = emp.isBlocked ? `<span class="bg-red-500/20 text-red-500 text-[9px] px-2 py-0.5 rounded-full font-bold ml-2 border border-red-500/20 uppercase">Bloqueado</span>` : '';
             
+            const rolesDisplay = Array.isArray(emp.role) ? emp.role.join(', ') : (emp.role || 'Não definida');
+
             card.innerHTML = `
                 <div class="flex items-center gap-4">
                     <img src="${photoUrl}" alt="${emp.name}" class="w-12 h-12 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800 flex-shrink-0">
                     <div>
                         <h3 class="font-bold text-white text-sm flex items-center">${emp.name} ${badge}</h3>
-                        <p class="text-xs text-zinc-500">${emp.role} • ${emp.spec || 'Geral'}</p>
+                        <p class="text-xs text-zinc-500">${rolesDisplay} • ${emp.spec || 'Geral'}</p>
                     </div>
                 </div>
                 <button onclick="app.editEmployee('${emp.id}')" class="p-2 text-zinc-500 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
@@ -109,6 +141,12 @@ const app = {
         document.getElementById('modal-title').innerText = 'Novo Funcionário';
         document.getElementById('btn-delete-emp').classList.add('hidden');
         
+        // Resetando os checkboxes de funções
+        document.querySelectorAll('.role-checkbox').forEach(chk => {
+            chk.checked = false;
+            chk.parentElement.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-zinc-900 border-zinc-800 text-zinc-500";
+        });
+
         // Resetando os novos campos
         if(document.getElementById('emp-blocked')) document.getElementById('emp-blocked').checked = false;
         if(document.getElementById('emp-work-start')) document.getElementById('emp-work-start').value = '09:00';
@@ -133,11 +171,22 @@ const app = {
         if(emp) {
             document.getElementById('emp-id').value = emp.id;
             document.getElementById('emp-name').value = emp.name;
-            document.getElementById('emp-role').value = emp.role;
             document.getElementById('emp-spec').value = emp.spec || '';
             document.getElementById('emp-email').value = emp.email;
             document.getElementById('emp-pass').value = emp.password || '';
             
+            // Lógica para marcar as funções corretas
+            const selectedRoles = Array.isArray(emp.role) ? emp.role : [emp.role]; // Fallback para dados antigos
+            document.querySelectorAll('.role-checkbox').forEach(chk => {
+                if (selectedRoles.includes(chk.value)) {
+                    chk.checked = true;
+                    chk.parentElement.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-amber-500/10 border-amber-500/50 text-amber-500";
+                } else {
+                    chk.checked = false;
+                    chk.parentElement.className = "cursor-pointer border rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-1 bg-zinc-900 border-zinc-800 text-zinc-500";
+                }
+            });
+
             // Popula os novos campos de horário e bloqueio
             if(document.getElementById('emp-blocked')) document.getElementById('emp-blocked').checked = emp.isBlocked || false;
             
@@ -202,6 +251,15 @@ const app = {
 
     saveEmployee: async (e) => {
         e.preventDefault();
+        
+        // Pega os cargos selecionados primeiro para validar
+        const selectedRoles = Array.from(document.querySelectorAll('.role-checkbox:checked')).map(chk => chk.value);
+        
+        if(selectedRoles.length === 0) {
+            alert("Por favor, selecione pelo menos uma Função.");
+            return;
+        }
+
         const id = document.getElementById('emp-id').value;
         const btn = e.submitter;
         
@@ -215,7 +273,7 @@ const app = {
 
         const employeeData = {
             name: document.getElementById('emp-name').value,
-            role: document.getElementById('emp-role').value,
+            role: selectedRoles,
             spec: document.getElementById('emp-spec').value,
             email: document.getElementById('emp-email').value,
             photoUrl: photoUrl,
@@ -278,26 +336,56 @@ const app = {
 
     // --- GESTÃO DE HORÁRIOS ---
     renderDays: () => {
-        const container = document.getElementById('days-container');
+        const container = document.getElementById('daily-schedules-container');
         if(!container) return;
         container.innerHTML = '';
+        
         daysOfWeek.forEach(day => {
-            const label = document.createElement('label');
+            const dayId = day.toLowerCase(); // seg, ter, qua...
             const isDefaultActive = day !== 'Dom';
             
-            label.className = `cursor-pointer border rounded-lg px-3 py-2 text-sm font-bold transition-all select-none flex items-center gap-2 ${isDefaultActive ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`;
-            label.innerHTML = `<input type="checkbox" class="hidden" value="${day}" ${isDefaultActive ? 'checked' : ''}>${day}`;
+            const dayRow = document.createElement('div');
+            // Estilo da linha de cada dia
+            dayRow.className = "flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-zinc-950/50 rounded-xl border border-zinc-800 transition-all";
             
-            label.addEventListener('change', function() {
-                const chk = this.querySelector('input');
-                if (chk.checked) {
-                    this.className = "cursor-pointer border rounded-lg px-3 py-2 text-sm font-bold transition-all select-none flex items-center gap-2 bg-amber-500/10 border-amber-500/50 text-amber-500";
-                } else {
-                    this.className = "cursor-pointer border rounded-lg px-3 py-2 text-sm font-bold transition-all select-none flex items-center gap-2 bg-zinc-900 border-zinc-800 text-zinc-500";
-                }
-            });
-            container.appendChild(label);
+            dayRow.innerHTML = `
+                <div class="w-32 flex-shrink-0">
+                    <label class="cursor-pointer flex items-center gap-3">
+                        <input type="checkbox" id="chk-${dayId}" value="${day}" 
+                            class="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 accent-amber-500" 
+                            ${isDefaultActive ? 'checked' : ''} onchange="app.toggleDayInputs('${dayId}')">
+                        <span class="text-sm font-bold text-zinc-100">${day}</span>
+                    </label>
+                </div>
+                
+                <div class="flex-1 flex gap-4 items-center transition-opacity duration-300 ${isDefaultActive ? 'opacity-100' : 'opacity-50 pointer-events-none'}" id="inputs-${dayId}">
+                    <div class="flex-1 relative">
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold mb-1 block">Abertura</label>
+                        <input type="time" id="open-${dayId}" value="09:00" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 focus:border-amber-500 outline-none text-sm">
+                    </div>
+                    <span class="text-zinc-600 mt-5">-</span>
+                    <div class="flex-1 relative">
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold mb-1 block">Fecho</label>
+                        <input type="time" id="close-${dayId}" value="20:00" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 focus:border-amber-500 outline-none text-sm">
+                    </div>
+                </div>
+            `;
+            container.appendChild(dayRow);
         });
+    },
+
+    toggleDayInputs: (dayId) => {
+        const chk = document.getElementById(`chk-${dayId}`);
+        const inputs = document.getElementById(`inputs-${dayId}`);
+        if(chk && inputs) {
+            if(chk.checked) {
+                inputs.classList.remove('opacity-50', 'pointer-events-none');
+                inputs.classList.add('opacity-100');
+            } else {
+                inputs.classList.remove('opacity-100');
+                inputs.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
     },
 
     renderEmpDays: () => {
@@ -329,20 +417,34 @@ const app = {
             if (doc.exists) {
                 const data = doc.data();
                 
-                if(document.getElementById('sched-open')) document.getElementById('sched-open').value = data.open || "09:00";
-                if(document.getElementById('sched-close')) document.getElementById('sched-close').value = data.close || "20:00";
-
-                if (data.days) {
-                    const checkboxes = document.querySelectorAll('#days-container input');
-                    checkboxes.forEach(input => {
-                        const isDayActive = data.days.includes(input.value);
-                        input.checked = isDayActive;
+                if (data.dailySchedules) {
+                    daysOfWeek.forEach(day => {
+                        const dayId = day.toLowerCase();
+                        const schedule = data.dailySchedules[day];
                         
-                        const label = input.parentElement;
-                        if (isDayActive) {
-                            label.className = "cursor-pointer border rounded-lg px-3 py-2 text-sm font-bold transition-all select-none flex items-center gap-2 bg-amber-500/10 border-amber-500/50 text-amber-500";
-                        } else {
-                            label.className = "cursor-pointer border rounded-lg px-3 py-2 text-sm font-bold transition-all select-none flex items-center gap-2 bg-zinc-900 border-zinc-800 text-zinc-500";
+                        const chk = document.getElementById(`chk-${dayId}`);
+                        const openInput = document.getElementById(`open-${dayId}`);
+                        const closeInput = document.getElementById(`close-${dayId}`);
+                        
+                        if (schedule && chk && openInput && closeInput) {
+                            chk.checked = schedule.active;
+                            openInput.value = schedule.open || "09:00";
+                            closeInput.value = schedule.close || "20:00";
+                            app.toggleDayInputs(dayId);
+                        }
+                    });
+                } else if (data.days) {
+                    daysOfWeek.forEach(day => {
+                        const dayId = day.toLowerCase();
+                        const chk = document.getElementById(`chk-${dayId}`);
+                        const openInput = document.getElementById(`open-${dayId}`);
+                        const closeInput = document.getElementById(`close-${dayId}`);
+                        
+                        if(chk) {
+                            chk.checked = data.days.includes(day);
+                            if(openInput) openInput.value = data.open || "09:00";
+                            if(closeInput) closeInput.value = data.close || "20:00";
+                            app.toggleDayInputs(dayId);
                         }
                     });
                 }
@@ -352,26 +454,51 @@ const app = {
         }
     },
 
-    saveSchedule: async () => {
-        const activeDays = Array.from(document.querySelectorAll('#days-container input:checked')).map(i => i.value);
+    saveSchedule: async (event) => {
+        const dailySchedules = {};
+        let activeDays = [];
+        
+        daysOfWeek.forEach(day => {
+            const dayId = day.toLowerCase();
+            const chk = document.getElementById(`chk-${dayId}`);
+            const openInput = document.getElementById(`open-${dayId}`);
+            const closeInput = document.getElementById(`close-${dayId}`);
+            
+            if (chk) {
+                dailySchedules[day] = {
+                    active: chk.checked,
+                    open: openInput ? openInput.value : "09:00",
+                    close: closeInput ? closeInput.value : "20:00"
+                };
+                
+                if(chk.checked) activeDays.push(day);
+            }
+        });
+
         const schedule = {
             days: activeDays,
-            open: document.getElementById('sched-open').value,
-            close: document.getElementById('sched-close').value,
+            dailySchedules: dailySchedules,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
+
+        const btn = event ? event.currentTarget : document.querySelector('#section-schedule button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
+        if (window.lucide) lucide.createIcons();
 
         try {
             await db.collection("settings").doc("schedule").set(schedule);
             alert("Horários atualizados com sucesso!");
         } catch (error) {
+            console.error(error);
             alert("Erro ao salvar horários.");
+        } finally {
+            btn.innerHTML = originalHTML;
+            if (window.lucide) lucide.createIcons();
         }
     },
 
     // --- GESTÃO DA EMPRESA ---
-    
-    // NOVO: Função para o preview da logo
     updateCompanyLogoPreview: (url) => {
         const img = document.getElementById('comp-logo-preview');
         const placeholder = document.getElementById('comp-logo-placeholder');
@@ -396,8 +523,8 @@ const app = {
 
     saveCompany: async () => {
         const companyData = {
-            logoUrl: document.getElementById('comp-logo').value, // NOVO
-            mapsUrl: document.getElementById('comp-maps').value, // NOVO
+            logoUrl: document.getElementById('comp-logo').value, 
+            mapsUrl: document.getElementById('comp-maps').value, 
             about: document.getElementById('comp-about').value,
             phone: document.getElementById('comp-phone').value,
             email: document.getElementById('comp-email').value,
@@ -417,13 +544,12 @@ const app = {
             const doc = await db.collection("settings").doc("company").get();
             if (doc.exists) {
                 const data = doc.data();
-                if(document.getElementById('comp-logo')) document.getElementById('comp-logo').value = data.logoUrl || ""; // NOVO
-                if(document.getElementById('comp-maps')) document.getElementById('comp-maps').value = data.mapsUrl || ""; // NOVO
+                if(document.getElementById('comp-logo')) document.getElementById('comp-logo').value = data.logoUrl || ""; 
+                if(document.getElementById('comp-maps')) document.getElementById('comp-maps').value = data.mapsUrl || ""; 
                 if(document.getElementById('comp-about')) document.getElementById('comp-about').value = data.about || "";
                 if(document.getElementById('comp-phone')) document.getElementById('comp-phone').value = data.phone || "";
                 if(document.getElementById('comp-email')) document.getElementById('comp-email').value = data.email || "";
 
-                // NOVO: Atualiza a imagem de preview assim que os dados carregam
                 if (app.updateCompanyLogoPreview) {
                     app.updateCompanyLogoPreview(data.logoUrl || "");
                 }
@@ -442,17 +568,30 @@ const app = {
     },
 
     renderCategoryOptions: () => {
-        const select = document.getElementById('photo-category');
-        if (!select) return;
+        const container = document.getElementById('photo-categories-container');
+        if (!container) return;
 
         if (categories.length === 0) {
-            select.innerHTML = '<option value="" disabled selected>Crie uma categoria primeiro</option>';
+            container.innerHTML = '<span class="text-xs text-zinc-500">Crie uma categoria primeiro</span>';
             return;
         }
 
-        select.innerHTML = categories.map(cat => 
-            `<option value="${cat.name}">${cat.name}</option>`
-        ).join('');
+        container.innerHTML = categories.map(cat => `
+            <label class="cursor-pointer border rounded-lg px-3 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-2 bg-zinc-900 border-zinc-800 text-zinc-500">
+                <input type="checkbox" class="hidden category-checkbox" value="${cat.name}">
+                ${cat.name}
+            </label>
+        `).join('');
+
+        document.querySelectorAll('.category-checkbox').forEach(chk => {
+            chk.addEventListener('change', function() {
+                if (this.checked) {
+                    this.parentElement.className = "cursor-pointer border rounded-lg px-3 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-2 bg-amber-500/10 border-amber-500/50 text-amber-500";
+                } else {
+                    this.parentElement.className = "cursor-pointer border rounded-lg px-3 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-2 bg-zinc-900 border-zinc-800 text-zinc-500";
+                }
+            });
+        });
     },
 
     addCategory: async () => {
@@ -494,15 +633,20 @@ const app = {
         if(!grid) return;
         grid.innerHTML = '';
         gallery.forEach((item) => {
+            const catDisplay = Array.isArray(item.category) ? item.category.join(', ') : (item.category || 'Geral');
+
             const div = document.createElement('div');
             div.className = "aspect-square rounded-xl bg-zinc-800 overflow-hidden relative group border border-zinc-800";
             div.innerHTML = `
                 <img src="${item.url}" class="w-full h-full object-cover transition-transform group-hover:scale-110">
-                <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md text-[10px] font-bold text-zinc-300 border border-white/10 uppercase tracking-wider">
-                    ${item.category || 'Geral'}
+                <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded-md text-[10px] font-bold text-zinc-300 border border-white/10 uppercase tracking-wider max-w-[80%] truncate">
+                    ${catDisplay}
                 </div>
-                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                     <button class="p-2 bg-red-500/80 rounded-full hover:bg-red-500 text-white" onclick="app.deletePhoto('${item.id}')">
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                     <button type="button" class="p-2.5 bg-amber-500 rounded-full hover:bg-amber-400 text-white shadow-lg transition-transform hover:scale-110" onclick="app.editPhoto('${item.id}')">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                     </button>
+                     <button type="button" class="p-2.5 bg-red-500 rounded-full hover:bg-red-400 text-white shadow-lg transition-transform hover:scale-110" onclick="app.deletePhoto('${item.id}')">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                      </button>
                 </div>`;
@@ -511,13 +655,43 @@ const app = {
         
         const addBtn = document.createElement('div');
         addBtn.className = "aspect-square rounded-xl border-2 border-dashed border-zinc-800 flex flex-col items-center justify-center text-zinc-600 hover:text-amber-500 hover:border-amber-500/50 cursor-pointer transition-all";
-        addBtn.innerHTML = `<i data-lucide="plus" class="w-8 h-8"></i><span class="text-[10px] font-bold">ADD</span>`;
+        addBtn.innerHTML = `<i data-lucide="plus" class="w-8 h-8"></i><span class="text-[10px] font-bold mt-1">NOVA FOTO</span>`;
         addBtn.onclick = () => app.uploadPhoto();
         grid.appendChild(addBtn);
         lucide.createIcons();
     },
 
     uploadPhoto: () => {
+        document.getElementById('photo-id').value = '';
+        document.getElementById('gallery-form').reset();
+        document.getElementById('gallery-modal-title').innerHTML = '<i data-lucide="image-plus" class="w-5 h-5 text-amber-500"></i> Adicionar à Galeria';
+        app.updatePhotoPreview('');
+        app.renderCategoryOptions(); 
+        document.getElementById('gallery-modal').classList.remove('hidden');
+        lucide.createIcons();
+    },
+
+    editPhoto: (id) => {
+        const item = gallery.find(g => g.id === id);
+        if (!item) return;
+
+        document.getElementById('photo-id').value = item.id;
+        document.getElementById('photo-url').value = item.url;
+        document.getElementById('gallery-modal-title').innerHTML = '<i data-lucide="edit" class="w-5 h-5 text-amber-500"></i> Editar Foto';
+        app.updatePhotoPreview(item.url);
+
+        app.renderCategoryOptions(); 
+        
+        setTimeout(() => {
+            const selectedCats = Array.isArray(item.category) ? item.category : [item.category];
+            document.querySelectorAll('.category-checkbox').forEach(chk => {
+                if (selectedCats.includes(chk.value)) {
+                    chk.checked = true;
+                    chk.parentElement.className = "cursor-pointer border rounded-lg px-3 py-1.5 text-xs font-bold transition-all select-none flex items-center gap-2 bg-amber-500/10 border-amber-500/50 text-amber-500";
+                }
+            });
+        }, 50);
+
         document.getElementById('gallery-modal').classList.remove('hidden');
         lucide.createIcons();
     },
@@ -525,6 +699,7 @@ const app = {
     closeGalleryModal: () => {
         document.getElementById('gallery-modal').classList.add('hidden');
         document.getElementById('gallery-form').reset();
+        document.getElementById('photo-id').value = '';
         document.getElementById('img-preview').classList.add('hidden');
         document.getElementById('preview-placeholder').classList.remove('hidden');
     },
@@ -545,32 +720,42 @@ const app = {
 
     handleGallerySubmit: async (e) => {
         e.preventDefault();
+        const id = document.getElementById('photo-id').value;
         const url = document.getElementById('photo-url').value;
-        const category = document.getElementById('photo-category').value;
-        const btn = e.target.querySelector('button[type="submit"]');
+        
+        const selectedCategories = Array.from(document.querySelectorAll('.category-checkbox:checked')).map(chk => chk.value);
 
-        if(!category) {
-            alert("Por favor, selecione uma categoria.");
+        if(selectedCategories.length === 0) {
+            alert("Por favor, selecione pelo menos uma categoria.");
             return;
         }
 
+        const btn = e.target.querySelector('button[type="submit"]');
         btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Publicando...';
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Salvando...';
         lucide.createIcons();
 
         try {
-            await db.collection("gallery").add({
+            const photoData = {
                 url: url,
-                category: category,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+                category: selectedCategories, 
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (id) {
+                await db.collection("gallery").doc(id).update(photoData);
+            } else {
+                photoData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                await db.collection("gallery").add(photoData);
+            }
             app.closeGalleryModal();
         } catch (error) {
             console.error("Erro ao salvar foto:", error);
             alert("Erro ao salvar foto na galeria.");
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i data-lucide="upload-cloud" class="w-5 h-5"></i> Publicar na Galeria';
+            btn.innerHTML = originalHTML;
             lucide.createIcons();
         }
     },

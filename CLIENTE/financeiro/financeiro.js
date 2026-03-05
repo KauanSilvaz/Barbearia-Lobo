@@ -1,7 +1,7 @@
-/* financeiro.js - COMPLETO COM PDV (CAIXA) E REAL-TIME SYNC */
+/* financeiro.js - COMPLETO COM PDV (CAIXA), REAL-TIME SYNC E EXCLUSÃO */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, addDoc, query, orderBy, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAmljKXhjb9GlY1ABEA-GPJqNsftsv_hVk",
@@ -33,14 +33,37 @@ window.imprimirNota = function(dadosCodificados) {
     financeApp.imprimirNotaTermica(dadosCodificados);
 };
 
+// Expondo a função de exclusão globalmente para o onclick do HTML
+window.excluirRegistro = function(id) {
+    financeApp.excluirRegistro(id);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
     financeApp.initCharts();
     financeApp.configurarEventos();
     financeApp.iniciarSincronizacaoRealTime();
+    financeApp.syncCompanyLogo();
 });
 
 const financeApp = {
+
+    syncCompanyLogo: () => {
+        const watermarkImg = document.getElementById('watermark-img');
+        const headerLogo = document.getElementById('header-logo');
+
+        if (!watermarkImg && !headerLogo) return;
+
+        onSnapshot(doc(db, "settings", "company"), (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                if (data.logoUrl) {
+                    if (watermarkImg) watermarkImg.src = data.logoUrl;
+                    if (headerLogo) headerLogo.src = data.logoUrl;
+                }
+            }
+        });
+    },
 
     configurarEventos: () => {
         document.getElementById('btn-hoje').addEventListener('click', (e) => financeApp.aplicarFiltroPeriodo('hoje', e.target));
@@ -159,7 +182,7 @@ const financeApp = {
 
             // Reaplica o filtro ativo
             const botaoAtivo = document.querySelector('.btn-periodo.bg-zinc-800') || document.getElementById('btn-mes');
-            botaoAtivo.click();
+            if (botaoAtivo) botaoAtivo.click();
         });
 
         // 2. Sincroniza dados auxiliares para o PDV
@@ -240,7 +263,7 @@ const financeApp = {
             const change = method === 'dinheiro' ? (received - posState.currentTotal) : 0;
             const dataHoje = new Date().toISOString();
             
-            // Payload padrão SAMI (O mesmo do home.js)
+            // Payload padrão 
             const transactionData = {
                 originalBookingId: "lancamento_manual",
                 companyId: "sami",
@@ -278,6 +301,17 @@ const financeApp = {
         } finally {
             submitBtn.innerHTML = originalContent;
             submitBtn.disabled = false;
+        }
+    },
+
+    excluirRegistro: async (id) => {
+        if (confirm("Tem a certeza que deseja excluir este registo? Esta ação não pode ser desfeita.")) {
+            try {
+                await deleteDoc(doc(db, "history", id));
+            } catch (error) {
+                console.error("Erro ao excluir registo:", error);
+                alert("Erro ao excluir o registo. Tente novamente.");
+            }
         }
     },
 
@@ -400,9 +434,12 @@ const financeApp = {
                 </td>
                 <td class="px-6 py-3">${metodoBadge}</td>
                 <td class="px-6 py-3 text-right font-medium text-zinc-100">€ ${row.valor.toFixed(2).replace('.', ',')}</td>
-                <td class="px-6 py-3 text-center">
+                <td class="px-6 py-3 text-center flex justify-center gap-1">
                     <button onclick="window.imprimirNota('${dadosJson}')" class="p-1.5 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors" title="Imprimir Recibo">
                         <i data-lucide="printer" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="window.excluirRegistro('${row.id}')" class="p-1.5 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Excluir Registo">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </td>
             `;
