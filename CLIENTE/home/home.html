@@ -37,9 +37,14 @@
                 <a href="../config/config.html" class="px-4 py-3 md:py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Config</a>
             </nav>
 
-            <div class="hidden md:flex items-center gap-2 bg-zinc-900 py-1.5 px-2 rounded-full border border-zinc-800">
-               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" class="w-6 h-6 rounded-full" />
-               <span class="text-xs font-medium text-zinc-400 pr-2">Admin</span>
+            <div class="hidden md:flex items-center gap-2">
+                <button id="btn-enable-notifications" class="p-2 text-zinc-400 hover:text-amber-500 transition-colors" title="Ativar Notificações neste dispositivo">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                </button>
+                <div class="flex items-center gap-2 bg-zinc-900 py-1.5 px-2 rounded-full border border-zinc-800">
+                   <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" class="w-6 h-6 rounded-full" />
+                   <span class="text-xs font-medium text-zinc-400 pr-2">Admin</span>
+                </div>
             </div>
         </div>
     </header>

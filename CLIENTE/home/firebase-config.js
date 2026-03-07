@@ -1,6 +1,7 @@
 // firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getMessaging } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 // Substitua pelos dados do seu projeto no Firebase Console:
 // Project Settings > General > Your apps (Web App)
@@ -19,3 +20,6 @@ const app = initializeApp(firebaseConfig);
 
 // Inicializa o Firestore e exporta para usar no home.js
 export const db = getFirestore(app);
+
+// Inicializa o Messaging (Notificações Push)
+export const messaging = getMessaging(app);

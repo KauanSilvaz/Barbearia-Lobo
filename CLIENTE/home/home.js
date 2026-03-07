@@ -1,7 +1,8 @@
-import { db } from './firebase-config.js';
+import { db, messaging } from './firebase-config.js';
 import { 
     collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 const state = {
     appointments: [],
@@ -30,6 +31,7 @@ const els = {
     btnCloseModal: document.getElementById('btn-close-modal'),
     modalActions: document.getElementById('modal-actions'),
     btnStatusConfirm: document.getElementById('btn-status-confirm'),
+    btnEnableNotifications: document.getElementById('btn-enable-notifications'),
     
     // Elementos do formulário de cliente
     btnToggleClient: document.getElementById('btn-toggle-client'),
@@ -52,6 +54,10 @@ const els = {
 };
 
 let isCreatingNewClient = false;
+
+// URL DA SUA API NO BACKEND (Exemplo Vercel)
+// Depois que você hospedar o passo 5, cole a URL real aqui:
+const API_NOTIFICACOES_URL = '/api/enviar-notificacao'; 
 
 if (els.formTime.tagName === 'SELECT') {
     const timeInput = document.createElement('input');
@@ -77,7 +83,6 @@ const formatMinutesToTime = (minutes) => {
 
 // --- FIREBASE SYNC ---
 function initFirebaseSync() {
-    // Sincroniza a marca d'água e a logo do topo com o Firestore
     syncCompanyLogo();
 
     onSnapshot(collection(db, "employees"), (snapshot) => {
@@ -107,23 +112,16 @@ function initFirebaseSync() {
 
 function syncCompanyLogo() {
     const watermarkImg = document.getElementById('watermark-img');
-    const headerLogo = document.getElementById('header-logo'); // Seleciona a logo do topo
+    const headerLogo = document.getElementById('header-logo');
 
     if (!watermarkImg && !headerLogo) return;
 
-    // Escuta mudanças na logo nos dados da empresa (SAMI)
     onSnapshot(doc(db, "settings", "company"), (snapshot) => {
         if (snapshot.exists()) {
             const data = snapshot.data();
             if (data.logoUrl) {
-                // Atualiza a marca d'água de fundo
-                if (watermarkImg) {
-                    watermarkImg.src = data.logoUrl;
-                }
-                // Atualiza a logo pequena do header
-                if (headerLogo) {
-                    headerLogo.src = data.logoUrl;
-                }
+                if (watermarkImg) watermarkImg.src = data.logoUrl;
+                if (headerLogo) headerLogo.src = data.logoUrl;
             }
         }
     });
@@ -134,7 +132,6 @@ function renderHeader(visibleBarbers) {
     els.gridHeader.innerHTML = '<div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/50"></div>';
     
     visibleBarbers.forEach(barber => {
-        // Verifica se o barbeiro tem foto, senão usa o avatar padrão
         const avatarUrl = barber.photoUrl && barber.photoUrl.trim() !== '' 
             ? barber.photoUrl 
             : `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}`;
@@ -177,9 +174,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
     const linesContent = document.createElement('div');
     linesContent.className = 'flex-1 relative';
 
-    // RENDERIZANDO DE 5 EM 5 MINUTOS COMO RÉGUA
     for (let h = startHour; h <= endHour; h++) {
-        // Se for a última hora do dia, só renderiza o :00
         const maxMinutes = (h === endHour) ? 0 : 55;
 
         for (let m = 0; m <= maxMinutes; m += 5) {
@@ -192,17 +187,14 @@ function renderGrid(visibleBarbers, currentDateStr) {
             hLine.style.top = `${topPx}px`;
 
             if (m === 0) {
-                // HORA CHEIA
                 timeLabel.className = 'absolute w-full text-center text-[11px] text-zinc-300 font-bold -mt-2 z-10';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:00`;
                 hLine.className = 'absolute w-[200vw] border-t border-zinc-700/60 z-10';
             } else if (m === 30) {
-                // MEIA HORA
                 timeLabel.className = 'absolute w-full text-center text-[10px] text-zinc-500 font-medium -mt-1.5';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:30`;
                 hLine.className = 'absolute w-[200vw] border-t border-zinc-800/50 border-dashed';
             } else {
-                // INTERVALOS DE 5 MINUTOS
                 timeLabel.className = 'absolute w-full text-center text-[8px] text-zinc-700/70 font-medium -mt-1';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
                 hLine.className = 'absolute w-[200vw] border-t border-zinc-800/20 border-dotted';
@@ -271,11 +263,8 @@ function renderGrid(visibleBarbers, currentDateStr) {
         };
 
         const bBookings = todaysBookings.filter(b => b.barberId === barber.id);
-        
-        // 1. Ordenar por horário de início
         const sortedBookings = [...bBookings].sort((a, b) => a.startTime - b.startTime);
 
-        // 2. Agrupar agendamentos que se cruzam/sobrepõem
         const groups = [];
         let currentGroup = [];
         let groupEnd = 0;
@@ -294,7 +283,6 @@ function renderGrid(visibleBarbers, currentDateStr) {
         });
         if (currentGroup.length > 0) groups.push(currentGroup);
 
-        // 3. Renderizar cada grupo dividindo o espaço
         groups.forEach(group => {
             const columns = [];
             group.forEach(item => {
@@ -354,7 +342,6 @@ function renderGrid(visibleBarbers, currentDateStr) {
                     textDecorationClass = 'line-through text-zinc-500';
                 }
 
-                // Cálculo de espaço horizontal dinâmico
                 const widthPct = 100 / numCols;
                 const leftPct = item.colIndex * widthPct;
 
@@ -477,6 +464,30 @@ function updateSelectOptions(selectEl, data, defaultText = null) {
     data.forEach(item => selectEl.add(new Option(item.name, item.id)));
 }
 
+// --- NOTIFICAÇÕES: SOLICITAR PERMISSÃO ---
+if (els.btnEnableNotifications) {
+    els.btnEnableNotifications.onclick = async () => {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                // CHAVE VAPID: Vá no Firebase Console > Project Settings > Cloud Messaging > Web configuration > Generate Key pair
+                // Substitua a string abaixo pela chave pública gerada lá.
+                const currentToken = await getToken(messaging, { vapidKey: 'BExxxxxxxxxxxxxxxxxxxxxxxxxxxxxSUA_CHAVE_VAPID_AQUIxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
+                if (currentToken) {
+                    console.log('Token FCM:', currentToken);
+                    // Aqui você pode salvar o token no documento do administrador logado
+                    // Exemplo: await updateDoc(doc(db, "employees", adminId), { fcmToken: currentToken });
+                    alert('Notificações ativadas! Você será avisado sobre agendamentos.');
+                }
+            } else {
+                alert('Permissão para notificações não foi concedida.');
+            }
+        } catch (error) {
+            console.error('Erro ao pedir permissão de notificação:', error);
+        }
+    };
+}
+
 window.app = {
     updateStatus: async (newStatus) => {
         if (!els.formId.value) return;
@@ -570,12 +581,34 @@ els.form.onsubmit = async (e) => {
             userId: userId, 
         };
 
-        if (els.formId.value) {
+        const isNew = !els.formId.value;
+
+        if (!isNew) {
             await updateDoc(doc(db, "bookings", els.formId.value), bookingData);
         } else {
             bookingData.createdAt = new Date().toISOString();
             await addDoc(collection(db, "bookings"), bookingData);
         }
+
+        // --- DISPARAR NOTIFICAÇÃO PRO BACKEND (API) ---
+        // Apenas para testes, não vai travar o salvamento se a API falhar.
+        try {
+            await fetch(API_NOTIFICACOES_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tipo: isNew ? 'agendamento' : 'atualizacao',
+                    nomeCliente: clientName,
+                    nomeBarbeiro: barber.name,
+                    data: els.formDate.value.split('-').reverse().join('/'),
+                    hora: formatMinutesToTime(startMins)
+                })
+            });
+        } catch (notifErr) {
+            console.log("Aviso: Notificação não enviada (API não configurada ainda).", notifErr);
+        }
+        // ----------------------------------------------
+
         closeModal();
     } catch (error) {
         console.error("Erro ao salvar:", error);
@@ -588,7 +621,31 @@ els.form.onsubmit = async (e) => {
 
 els.btnDelete.onclick = async () => {
     if (confirm("Tem certeza que deseja excluir este agendamento?")) {
-        await deleteDoc(doc(db, "bookings", els.formId.value));
+        const bookingId = els.formId.value;
+        const bookingData = state.appointments.find(a => a.id === bookingId);
+
+        await deleteDoc(doc(db, "bookings", bookingId));
+
+        // --- DISPARAR NOTIFICAÇÃO DE CANCELAMENTO ---
+        if (bookingData) {
+            try {
+                await fetch(API_NOTIFICACOES_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tipo: 'cancelamento',
+                        nomeCliente: bookingData.clientName,
+                        nomeBarbeiro: bookingData.barberName,
+                        data: bookingData.date.split('-').reverse().join('/'),
+                        hora: formatMinutesToTime(bookingData.startTime)
+                    })
+                });
+            } catch (notifErr) {
+                console.log("Aviso: Notificação não enviada.", notifErr);
+            }
+        }
+        // ----------------------------------------------
+
         closeModal();
     }
 };
@@ -722,4 +779,3 @@ els.paymentForm.onsubmit = async (e) => {
 };
 
 initFirebaseSync();
-

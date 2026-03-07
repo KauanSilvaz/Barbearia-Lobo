@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#000000">
 </head>
 <body>
     <div class="login-wrapper">
@@ -37,6 +37,10 @@
                 <button type="submit" class="btn-primary" id="btn-login">ACESSAR PAINEL</button>
             </form>
 
+            <button id="btn-install" class="btn-install" style="display: none;">
+                📲 INSTALAR APLICATIVO
+            </button>
+
             <div class="footer-links">
                 <a href="./CLIENTE/pagebarber/login.html" class="link-text text-muted">ACESSO EXCLUSIVO PARA BARBEIROS &rarr;</a>
             </div>
@@ -45,12 +49,59 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js');
-    });
-  }
-</script>
+        // 1. Registo do Service Worker original
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js');
+            });
+        }
+
+        // 2. NOVA LÓGICA DO BOTÃO PWA
+        let deferredPrompt;
+        const btnInstall = document.getElementById('btn-install');
+
+        // Escuta o evento do navegador que diz que o PWA pode ser instalado
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Previne o mini-infobar padrão do navegador de aparecer imediatamente
+            e.preventDefault();
+            
+            // Guarda o evento para que possamos acioná-lo no clique do botão
+            deferredPrompt = e;
+            
+            // Mostra o nosso botão personalizado
+            btnInstall.style.display = 'flex';
+        });
+
+        // Quando o utilizador clica no nosso botão
+        btnInstall.addEventListener('click', async () => {
+            if (deferredPrompt !== null) {
+                // Mostra a janela nativa de instalação do navegador
+                deferredPrompt.prompt();
+                
+                // Aguarda o utilizador escolher (Instalar ou Cancelar)
+                const { outcome } = await deferredPrompt.userChoice;
+                
+                if (outcome === 'accepted') {
+                    console.log('Utilizador aceitou instalar o PWA');
+                } else {
+                    console.log('Utilizador recusou instalar o PWA');
+                }
+                
+                // Limpa o evento pois só pode ser usado uma vez
+                deferredPrompt = null;
+                
+                // Oculta o botão novamente
+                btnInstall.style.display = 'none';
+            }
+        });
+
+        // Se o utilizador instalar o app (mesmo que por outro meio), escondemos o botão
+        window.addEventListener('appinstalled', () => {
+            btnInstall.style.display = 'none';
+            deferredPrompt = null;
+            console.log('PWA instalado com sucesso!');
+        });
+    </script>
     <script type="module" src="auth.js"></script>
 </body>
 </html>
