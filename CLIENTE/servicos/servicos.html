@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="servicos.css">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#09090b">
 </head>
 <body class="bg-zinc-950 text-zinc-100 selection:bg-amber-500/30 overflow-y-auto custom-scrollbar relative">
 
@@ -32,7 +32,7 @@
         <nav id="main-nav" class="hidden md:flex absolute md:relative top-16 md:top-0 left-0 w-full md:w-auto flex-col md:flex-row items-stretch md:items-center gap-1 bg-zinc-950 md:bg-zinc-900/50 p-4 md:p-1 border-b border-zinc-800 md:border md:border-zinc-800/50 shadow-xl md:shadow-none z-50 rounded-none md:rounded-lg">
             <a href="../home/home.html" class="nav-link px-4 py-3 md:py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Agenda</a>
             <a href="../clientes/clientes.html" class="nav-link px-4 py-3 md:py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Clientes</a>
-            <a href="../servicos/servicos.html" class="nav-link px-4 py-3 md:py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Serviços</a>
+            <a href="../servicos/servicos.html" class="nav-link px-4 py-3 md:py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all text-amber-500">Serviços</a>
             <a href="../financeiro/financeiro.html" class="nav-link px-4 py-3 md:py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Financeiro</a>
             <a href="../config/config.html" class="nav-link px-4 py-3 md:py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all">Config</a>
         </nav>
@@ -46,55 +46,57 @@
 
     <main class="max-w-7xl mx-auto px-4 pt-24 pb-12">
         
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            <div>
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+            <div class="w-full lg:w-auto">
                 <h1 class="text-2xl font-bold text-white tracking-tight">Catálogo de Serviços</h1>
                 <p class="text-zinc-400 text-sm mt-1">Gerencie preços, tempos e combos promocionais.</p>
             </div>
             
-            <div class="flex gap-3 w-full md:w-auto">
-                <div class="bg-zinc-900 rounded-lg border border-zinc-800 p-1 flex">
-                    <button class="px-4 py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm" id="filter-all" onclick="app.filter('all')">Todos</button>
-                    <button class="px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white" id="filter-service" onclick="app.filter('service')">Serviços</button>
-                    <button class="px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white" id="filter-combo" onclick="app.filter('combo')">Combos</button>
+            <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <div class="bg-zinc-900 rounded-lg border border-zinc-800 p-1 flex w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                    <button class="flex-1 px-4 py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm whitespace-nowrap" id="filter-all" onclick="app.filter('all')">Todos</button>
+                    <button class="flex-1 px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white whitespace-nowrap" id="filter-service" onclick="app.filter('service')">Serviços</button>
+                    <button class="flex-1 px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white whitespace-nowrap" id="filter-combo" onclick="app.filter('combo')">Combos</button>
                 </div>
 
-                <button onclick="app.openCategoryModal()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all">
-                    <i data-lucide="tags" class="w-4 h-4"></i> Categorias
-                </button>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button onclick="app.openCategoryModal()" class="flex-1 sm:flex-none justify-center bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all whitespace-nowrap">
+                        <i data-lucide="tags" class="w-4 h-4"></i> Categorias
+                    </button>
 
-                <button onclick="app.openModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all ml-auto md:ml-0">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Novo Serviço
-                </button>
+                    <button onclick="app.openModal()" class="flex-1 sm:flex-none justify-center bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all whitespace-nowrap">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Novo
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center"><i data-lucide="scissors" class="w-5 h-5"></i></div>
-                <div><p class="text-xs text-zinc-500 uppercase font-bold">Serviços Ativos</p><p class="text-xl font-bold text-white" id="stat-services">0</p></div>
+                <div class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0"><i data-lucide="scissors" class="w-5 h-5"></i></div>
+                <div><p class="text-[10px] sm:text-xs text-zinc-500 uppercase font-bold">Ativos</p><p class="text-xl font-bold text-white" id="stat-services">0</p></div>
             </div>
             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center"><i data-lucide="layers" class="w-5 h-5"></i></div>
-                <div><p class="text-xs text-zinc-500 uppercase font-bold">Combos</p><p class="text-xl font-bold text-white" id="stat-combos">0</p></div>
+                <div class="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"><i data-lucide="layers" class="w-5 h-5"></i></div>
+                <div><p class="text-[10px] sm:text-xs text-zinc-500 uppercase font-bold">Combos</p><p class="text-xl font-bold text-white" id="stat-combos">0</p></div>
             </div>
             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center"><i data-lucide="tag" class="w-5 h-5"></i></div>
-                <div><p class="text-xs text-zinc-500 uppercase font-bold">Em Promoção</p><p class="text-xl font-bold text-white" id="stat-promos">0</p></div>
+                <div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0"><i data-lucide="tag" class="w-5 h-5"></i></div>
+                <div><p class="text-[10px] sm:text-xs text-zinc-500 uppercase font-bold">Promoção</p><p class="text-xl font-bold text-white" id="stat-promos">0</p></div>
             </div>
         </div>
 
-        <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+        <div id="services-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
     </main>
 
-    <div id="service-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-slideUp flex flex-col max-h-[90vh]">
-            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
-                <h2 id="modal-title" class="text-xl font-bold text-zinc-100">Novo Serviço</h2>
-                <button onclick="app.closeModal()" class="text-zinc-500 hover:text-white transition-colors"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
+    <div id="service-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-slideUp flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+            <div class="px-4 sm:px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
+                <h2 id="modal-title" class="text-lg sm:text-xl font-bold text-zinc-100">Novo Serviço</h2>
+                <button onclick="app.closeModal()" class="text-zinc-500 hover:text-white transition-colors p-1"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
             </div>
 
-            <form id="service-form" class="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+            <form id="service-form" class="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="form-id">
                 <div class="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800 w-full">
                     <button type="button" class="flex-1 py-2 text-sm font-medium rounded-md transition-all bg-zinc-800 text-white" id="type-service" onclick="app.setType('service')">Serviço Único</button>
@@ -103,62 +105,63 @@
                 <input type="hidden" id="form-type" value="service">
 
                 <div>
-                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Nome do Item</label>
-                    <input type="text" id="form-name" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600" placeholder="Ex: Corte Degradê">
+                    <label class="block text-[10px] sm:text-xs font-medium text-zinc-500 uppercase mb-1">Nome do Item</label>
+                    <input type="text" id="form-name" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600" placeholder="Ex: Corte Degradê">
                 </div>
 
-                <div>
-                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Categoria</label>
-                    <select id="form-category" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
-                        <option value="" disabled selected>Carregando categorias...</option>
-                    </select>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-medium text-zinc-500 uppercase mb-1">Categoria</label>
+                        <select id="form-category" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
+                            <option value="" disabled selected>Carregando...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-medium text-zinc-500 uppercase mb-1">Complexidade</label>
+                        <select id="form-complexity" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
+                            <option value="facil">Fácil</option>
+                            <option value="medio">Médio</option>
+                            <option value="dificil">Difícil</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Complexidade (PT-PT)</label>
-                    <select id="form-complexity" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 appearance-none">
-                        <option value="facil">Fácil</option>
-                        <option value="medio">Médio</option>
-                        <option value="dificil">Difícil</option>
-                    </select>
-                </div>
-
-                <div id="combo-selection" class="hidden animate-fadeIn p-4 bg-zinc-950/50 rounded-lg border border-zinc-800 border-dashed">
-                    <label class="block text-xs font-medium text-amber-500 uppercase mb-2">Compor Combo</label>
+                <div id="combo-selection" class="hidden animate-fadeIn p-3 sm:p-4 bg-zinc-950/50 rounded-lg border border-zinc-800 border-dashed">
+                    <label class="block text-[10px] sm:text-xs font-medium text-amber-500 uppercase mb-2">Compor Combo</label>
                     <div class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar pr-2" id="combo-items-list"></div>
                     <div class="mt-2 text-xs text-zinc-500 text-right">Sugerido: <span id="combo-suggested-price">€ 0,00</span> | <span id="combo-suggested-time">0 min</span></div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Preço (€)</label>
-                        <input type="number" id="form-price" step="0.01" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600">
+                        <label class="block text-[10px] sm:text-xs font-medium text-zinc-500 uppercase mb-1">Preço (€)</label>
+                        <input type="number" id="form-price" step="0.01" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Duração (min)</label>
-                        <input type="number" id="form-duration" step="5" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600">
+                        <label class="block text-[10px] sm:text-xs font-medium text-zinc-500 uppercase mb-1">Duração (min)</label>
+                        <input type="number" id="form-duration" step="5" required class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600">
                     </div>
                 </div>
 
                 <div class="space-y-4 pt-4 border-t border-zinc-800">
                     <div>
-                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">URL da Imagem (Opcional)</label>
-                        <input type="url" id="form-image" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600" placeholder="https://exemplo.com/imagem.jpg">
+                        <label class="block text-[10px] sm:text-xs font-medium text-zinc-500 uppercase mb-1">URL da Imagem (Opcional)</label>
+                        <input type="url" id="form-image" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600" placeholder="https://exemplo.com/imagem.jpg">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-zinc-500 uppercase mb-1">Descrição (Opcional)</label>
-                        <textarea id="form-description" rows="2" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-amber-600 custom-scrollbar" placeholder="Breve descrição do serviço..."></textarea>
+                        <label class="block text-[10px] sm:text-xs font-medium text-zinc-500 uppercase mb-1">Descrição (Opcional)</label>
+                        <textarea id="form-description" rows="2" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600 custom-scrollbar" placeholder="Breve descrição do serviço..."></textarea>
                     </div>
                 </div>
 
                 <div class="pt-4 border-t border-zinc-800">
                     <div class="flex items-center justify-between mb-3">
-                        <div>
+                        <div class="pr-2">
                             <label class="text-sm font-medium text-zinc-300 block">Serviço Ativo</label>
-                            <span class="text-xs text-zinc-500">Se desativado, o serviço é suspenso e ocultado dos clientes.</span>
+                            <span class="text-[10px] sm:text-xs text-zinc-500 leading-tight block">Se desativado, o serviço é suspenso.</span>
                         </div>
                         <input type="checkbox" id="form-is-active" class="toggle-checkbox hidden" checked/>
-                        <label for="form-is-active" class="relative inline-block w-10 h-5 bg-zinc-700 rounded-full cursor-pointer transition-colors toggle-label-generic" id="toggle-label-active"></label>
+                        <label for="form-is-active" class="relative inline-block w-10 h-5 bg-zinc-700 rounded-full cursor-pointer transition-colors toggle-label-generic shrink-0" id="toggle-label-active"></label>
                     </div>
                 </div>
 
@@ -166,55 +169,52 @@
                     <div class="flex items-center justify-between mb-3">
                         <label class="text-sm font-medium text-zinc-300">Ativar Promoção?</label>
                         <input type="checkbox" id="form-is-promo" class="toggle-checkbox hidden"/>
-                        <label for="form-is-promo" class="relative inline-block w-10 h-5 bg-zinc-700 rounded-full cursor-pointer transition-colors" id="toggle-label-promo"></label>
+                        <label for="form-is-promo" class="relative inline-block w-10 h-5 bg-zinc-700 rounded-full cursor-pointer transition-colors shrink-0" id="toggle-label-promo"></label>
                     </div>
                     <div id="promo-fields" class="hidden animate-fadeIn space-y-3">
                         <div>
-                            <label class="block text-xs font-medium text-emerald-500 uppercase mb-1">Preço Promocional (€)</label>
-                            <input type="number" id="form-promo-price" step="0.01" class="w-full bg-emerald-950/20 border border-emerald-500/30 rounded-lg px-4 py-3 text-emerald-400 outline-none focus:border-emerald-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-emerald-500 uppercase mb-1">URL da Imagem da Promoção</label>
-                            <input type="url" id="form-promo-image" placeholder="https://link-da-imagem.com/foto.jpg" class="w-full bg-emerald-950/20 border border-emerald-500/30 rounded-lg px-4 py-3 text-emerald-400 outline-none focus:border-emerald-500">
+                            <label class="block text-[10px] sm:text-xs font-medium text-emerald-500 uppercase mb-1">Preço Promocional (€)</label>
+                            <input type="number" id="form-promo-price" step="0.01" class="w-full bg-emerald-950/20 border border-emerald-500/30 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base text-emerald-400 outline-none focus:border-emerald-500">
                         </div>
                     </div>
                 </div>
 
-                <div class="flex justify-between items-center pt-4">
-                    <button type="button" id="btn-delete" class="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1 hidden"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
-                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-8 py-2.5 rounded-lg font-medium shadow-lg ml-auto">Salvar</button>
+                <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 pt-4 pb-2 sm:pb-0">
+                    <button type="button" id="btn-delete" class="w-full sm:w-auto text-red-500 bg-red-500/10 sm:bg-transparent py-2.5 sm:py-0 rounded-lg hover:text-red-400 text-sm font-medium flex items-center justify-center gap-1 hidden transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir Serviço</button>
+                    
+                    <button type="submit" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white px-8 py-3 sm:py-2.5 rounded-lg font-medium shadow-lg sm:ml-auto">Salvar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div id="category-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp flex flex-col max-h-[90vh]">
-            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
-                <h2 class="text-xl font-bold text-zinc-100">Categorias</h2>
-                <button onclick="app.closeCategoryModal()" class="text-zinc-500 hover:text-white transition-colors"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
+    <div id="category-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp flex flex-col max-h-[80vh]">
+            <div class="px-4 sm:px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
+                <h2 class="text-lg sm:text-xl font-bold text-zinc-100">Categorias</h2>
+                <button onclick="app.closeCategoryModal()" class="text-zinc-500 hover:text-white transition-colors p-1"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
             </div>
 
-            <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
-                <form id="category-form" class="flex gap-2 mb-6" onsubmit="app.handleCategorySubmit(event)">
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+                <form id="category-form" class="flex flex-col sm:flex-row gap-2 mb-6" onsubmit="app.handleCategorySubmit(event)">
                     <input type="hidden" id="category-form-id">
-                    <input type="text" id="category-form-name" required placeholder="Nova categoria..." class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-100 focus:outline-none focus:border-amber-600">
-                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-medium shadow-lg transition-all">Salvar</button>
+                    <input type="text" id="category-form-name" required placeholder="Nova categoria..." class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 sm:py-2 text-sm sm:text-base text-zinc-100 focus:outline-none focus:border-amber-600">
+                    <button type="submit" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white px-4 py-3 sm:py-2 rounded-lg font-medium shadow-lg transition-all">Salvar</button>
                 </form>
 
-                <div class="space-y-2" id="category-list">
-                </div>
+                <div class="space-y-2" id="category-list"></div>
             </div>
         </div>
     </div>
+
     <script src="../navbar/nav.js"></script>
     <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js');
-    });
-  }
-</script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    </script>
     <script type="module" src="servicos.js"></script>
 </body>
 </html>

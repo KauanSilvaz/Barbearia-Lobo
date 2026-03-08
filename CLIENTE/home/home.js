@@ -53,6 +53,10 @@ const els = {
     paymentMethodRadios: document.getElementsByName('payment_method'),
 };
 
+els.gridBody.addEventListener('scroll', () => {
+    els.gridHeader.scrollLeft = els.gridBody.scrollLeft;
+});
+
 let isCreatingNewClient = false;
 
 // URL DA SUA API NO BACKEND (Exemplo Vercel)
@@ -129,7 +133,7 @@ function syncCompanyLogo() {
 
 // --- RENDERIZAÇÃO ---
 function renderHeader(visibleBarbers) {
-    els.gridHeader.innerHTML = '<div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/50"></div>';
+    els.gridHeader.innerHTML = '<div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/50 sticky left-0 z-20"></div>';
     
     visibleBarbers.forEach(barber => {
         const avatarUrl = barber.photoUrl && barber.photoUrl.trim() !== '' 
@@ -170,7 +174,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
 
     const linesContainer = document.createElement('div');
     linesContainer.className = 'absolute inset-0 pointer-events-none w-full min-w-max flex';
-    linesContainer.innerHTML = `<div class="w-16 flex-shrink-0"></div>`;
+    linesContainer.innerHTML = `<div class="w-16 flex-shrink-0 sticky left-0"></div>`;
     const linesContent = document.createElement('div');
     linesContent.className = 'flex-1 relative';
 
@@ -189,15 +193,15 @@ function renderGrid(visibleBarbers, currentDateStr) {
             if (m === 0) {
                 timeLabel.className = 'absolute w-full text-center text-[11px] text-zinc-300 font-bold -mt-2 z-10';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:00`;
-                hLine.className = 'absolute w-[200vw] border-t border-zinc-700/60 z-10';
+                hLine.className = 'absolute w-full border-t border-zinc-700/60 z-10';
             } else if (m === 30) {
                 timeLabel.className = 'absolute w-full text-center text-[10px] text-zinc-500 font-medium -mt-1.5';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:30`;
-                hLine.className = 'absolute w-[200vw] border-t border-zinc-800/50 border-dashed';
+                hLine.className = 'absolute w-full border-t border-zinc-800/50 border-dashed';
             } else {
                 timeLabel.className = 'absolute w-full text-center text-[8px] text-zinc-700/70 font-medium -mt-1';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                hLine.className = 'absolute w-[200vw] border-t border-zinc-800/20 border-dotted';
+                hLine.className = 'absolute w-full border-t border-zinc-800/20 border-dotted';
             }
 
             timeCol.appendChild(timeLabel);
@@ -232,7 +236,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
             if (!apptId) return;
 
             const rect = bCol.getBoundingClientRect();
-            const y = e.clientY - rect.top + els.gridBody.scrollTop - topPadding - offsetY;
+            const y = e.clientY - rect.top - topPadding - offsetY;
 
             let newStartMins = (y / pixelsPerMinute) + (startHour * 60);
             newStartMins = Math.max(startHour * 60, Math.floor(newStartMins / 5) * 5);
@@ -256,7 +260,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
         bCol.onclick = (e) => {
             if(e.target !== bCol) return;
             const rect = bCol.getBoundingClientRect();
-            const y = e.clientY - rect.top + els.gridBody.scrollTop - topPadding;
+            const y = e.clientY - rect.top - topPadding;
             let clickedMinuteOfDay = (y / pixelsPerMinute) + (startHour * 60);
             clickedMinuteOfDay = Math.max(startHour * 60, Math.floor(clickedMinuteOfDay / 5) * 5);
             openModal({ barberId: barber.id, startTime: clickedMinuteOfDay });

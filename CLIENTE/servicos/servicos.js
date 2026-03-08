@@ -82,15 +82,15 @@ const app = {
         document.getElementById('stat-promos').innerText = services.filter(s => s.isPromo).length;
     },
 
-    filter: (type) => {
+filter: (type) => {
         currentFilter = type;
         const ids = ['filter-all', 'filter-service', 'filter-combo'];
         ids.forEach(id => {
             const btn = document.getElementById(id);
             if(id === `filter-${type}`) {
-                btn.className = "px-4 py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm";
+                btn.className = "flex-1 px-4 py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm whitespace-nowrap";
             } else {
-                btn.className = "px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white";
+                btn.className = "flex-1 px-4 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white whitespace-nowrap";
             }
         });
         app.renderGrid();
