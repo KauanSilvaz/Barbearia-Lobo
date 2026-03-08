@@ -71,3 +71,34 @@ body {
     transform: translateY(-2px);
     filter: brightness(1.1);
 }
+
+/* Remove delay de toque no mobile para interfaces mais rápidas */
+button, a, input, select {
+    touch-action: manipulation;
+}
+
+/* Esconder barra de rolagem horizontal nativa nos containers no celular */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE e Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Comportamento de Snap para as colunas no mobile não pararem no meio */
+#grid-body, #grid-header {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.snap-col {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+}
+
+/* Área de respiro (Safe Area) para iPhones */
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+}

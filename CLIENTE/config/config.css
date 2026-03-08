@@ -21,6 +21,15 @@ body {
     background: #3f3f46;
 }
 
+/* Esconder scrollbar para elementos roláveis na horizontal (ex: abas no mobile) */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 /* Animações */
 .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
 .animate-slideUp { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }

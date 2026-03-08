@@ -112,7 +112,7 @@ const app = {
             
             // Lógica de visual para usuário bloqueado
             const blockedStyle = emp.isBlocked ? 'opacity-75 border-red-900/50' : 'border-zinc-800 hover:border-zinc-700';
-            card.className = `bg-zinc-900 border p-4 rounded-xl flex items-center justify-between group transition-colors ${blockedStyle}`;
+            card.className = `bg-zinc-900 border p-4 rounded-xl flex flex-row items-center justify-between group transition-colors ${blockedStyle}`;
             
             const photoUrl = emp.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.name || 'default'}`;
             const badge = emp.isBlocked ? `<span class="bg-red-500/20 text-red-500 text-[9px] px-2 py-0.5 rounded-full font-bold ml-2 border border-red-500/20 uppercase">Bloqueado</span>` : '';
@@ -120,14 +120,14 @@ const app = {
             const rolesDisplay = Array.isArray(emp.role) ? emp.role.join(', ') : (emp.role || 'Não definida');
 
             card.innerHTML = `
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3 sm:gap-4 overflow-hidden">
                     <img src="${photoUrl}" alt="${emp.name}" class="w-12 h-12 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800 flex-shrink-0">
-                    <div>
-                        <h3 class="font-bold text-white text-sm flex items-center">${emp.name} ${badge}</h3>
-                        <p class="text-xs text-zinc-500">${rolesDisplay} • ${emp.spec || 'Geral'}</p>
+                    <div class="truncate pr-2">
+                        <h3 class="font-bold text-white text-sm flex items-center flex-wrap gap-1">${emp.name} ${badge}</h3>
+                        <p class="text-xs text-zinc-500 truncate">${rolesDisplay} • ${emp.spec || 'Geral'}</p>
                     </div>
                 </div>
-                <button onclick="app.editEmployee('${emp.id}')" class="p-2 text-zinc-500 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
+                <button onclick="app.editEmployee('${emp.id}')" class="p-2.5 text-zinc-500 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex-shrink-0">
                     <i data-lucide="edit-2" class="w-4 h-4"></i>
                 </button>`;
             grid.appendChild(card);
@@ -293,7 +293,7 @@ const app = {
         }
 
         btn.disabled = true;
-        const originalText = btn.innerText;
+        const originalText = btn.innerHTML;
         btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
         if (window.lucide) lucide.createIcons();
 
@@ -317,14 +317,14 @@ const app = {
             console.error("Erro ao salvar no Firestore:", error);
             alert(error.message || "Erro ao salvar dados.");
         } finally {
-            btn.innerText = originalText;
+            btn.innerHTML = originalText;
             btn.disabled = false;
             if (window.lucide) lucide.createIcons();
         }
     },
 
     deleteEmployee: async (id) => {
-        if(confirm('Remover este funcionário?')) {
+        if(confirm('Tem a certeza de que pretende remover este funcionário?')) {
             try {
                 await db.collection("employees").doc(id).delete();
                 app.closeEmployeeModal();
@@ -345,28 +345,29 @@ const app = {
             const isDefaultActive = day !== 'Dom';
             
             const dayRow = document.createElement('div');
-            // Estilo da linha de cada dia
-            dayRow.className = "flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-zinc-950/50 rounded-xl border border-zinc-800 transition-all";
+            // Estilo da linha adaptável: colunas no telemóvel, linha no pc
+            dayRow.className = "flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 bg-zinc-950/50 rounded-xl border border-zinc-800 transition-all";
             
             dayRow.innerHTML = `
-                <div class="w-32 flex-shrink-0">
+                <div class="w-full sm:w-32 flex-shrink-0">
                     <label class="cursor-pointer flex items-center gap-3">
                         <input type="checkbox" id="chk-${dayId}" value="${day}" 
-                            class="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 accent-amber-500" 
+                            class="w-5 h-5 sm:w-4 sm:h-4 rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 accent-amber-500" 
                             ${isDefaultActive ? 'checked' : ''} onchange="app.toggleDayInputs('${dayId}')">
                         <span class="text-sm font-bold text-zinc-100">${day}</span>
                     </label>
                 </div>
                 
-                <div class="flex-1 flex gap-4 items-center transition-opacity duration-300 ${isDefaultActive ? 'opacity-100' : 'opacity-50 pointer-events-none'}" id="inputs-${dayId}">
+                <div class="flex flex-row gap-2 sm:gap-4 items-center flex-1 transition-opacity duration-300 ${isDefaultActive ? 'opacity-100' : 'opacity-50 pointer-events-none'}" id="inputs-${dayId}">
                     <div class="flex-1 relative">
                         <label class="text-[10px] text-zinc-500 uppercase font-bold mb-1 block">Abertura</label>
-                        <input type="time" id="open-${dayId}" value="09:00" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 focus:border-amber-500 outline-none text-sm">
+                        <input type="time" id="open-${dayId}" value="09:00" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 sm:px-3 py-2.5 sm:py-2 text-zinc-100 focus:border-amber-500 outline-none text-sm text-center sm:text-left">
                     </div>
-                    <span class="text-zinc-600 mt-5">-</span>
+                    <span class="text-zinc-600 mt-5 hidden sm:inline">-</span>
+                    <span class="text-zinc-600 mt-5 sm:hidden">a</span>
                     <div class="flex-1 relative">
                         <label class="text-[10px] text-zinc-500 uppercase font-bold mb-1 block">Fecho</label>
-                        <input type="time" id="close-${dayId}" value="20:00" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 focus:border-amber-500 outline-none text-sm">
+                        <input type="time" id="close-${dayId}" value="20:00" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 sm:px-3 py-2.5 sm:py-2 text-zinc-100 focus:border-amber-500 outline-none text-sm text-center sm:text-left">
                     </div>
                 </div>
             `;
@@ -636,9 +637,9 @@ const app = {
             const catDisplay = Array.isArray(item.category) ? item.category.join(', ') : (item.category || 'Geral');
 
             const div = document.createElement('div');
-            div.className = "aspect-square rounded-xl bg-zinc-800 overflow-hidden relative group border border-zinc-800";
+            div.className = "aspect-square rounded-xl bg-zinc-800 overflow-hidden relative group border border-zinc-800 shadow-md";
             div.innerHTML = `
-                <img src="${item.url}" class="w-full h-full object-cover transition-transform group-hover:scale-110">
+                <img src="${item.url}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
                 <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded-md text-[10px] font-bold text-zinc-300 border border-white/10 uppercase tracking-wider max-w-[80%] truncate">
                     ${catDisplay}
                 </div>
@@ -654,7 +655,7 @@ const app = {
         });
         
         const addBtn = document.createElement('div');
-        addBtn.className = "aspect-square rounded-xl border-2 border-dashed border-zinc-800 flex flex-col items-center justify-center text-zinc-600 hover:text-amber-500 hover:border-amber-500/50 cursor-pointer transition-all";
+        addBtn.className = "aspect-square rounded-xl border-2 border-dashed border-zinc-800 flex flex-col items-center justify-center text-zinc-600 hover:text-amber-500 hover:border-amber-500/50 cursor-pointer transition-all bg-zinc-900/50 hover:bg-zinc-900";
         addBtn.innerHTML = `<i data-lucide="plus" class="w-8 h-8"></i><span class="text-[10px] font-bold mt-1">NOVA FOTO</span>`;
         addBtn.onclick = () => app.uploadPhoto();
         grid.appendChild(addBtn);
@@ -761,7 +762,7 @@ const app = {
     },
 
     deletePhoto: async (id) => {
-        if(confirm('Remover foto da galeria?')) {
+        if(confirm('Tem a certeza de que pretende remover esta foto da galeria?')) {
             try {
                 await db.collection("gallery").doc(id).delete();
             } catch (error) {

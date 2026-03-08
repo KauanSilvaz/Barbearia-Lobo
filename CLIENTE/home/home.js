@@ -60,7 +60,6 @@ els.gridBody.addEventListener('scroll', () => {
 let isCreatingNewClient = false;
 
 // URL DA SUA API NO BACKEND (Exemplo Vercel)
-// Depois que você hospedar o passo 5, cole a URL real aqui:
 const API_NOTIFICACOES_URL = '/api/enviar-notificacao'; 
 
 if (els.formTime.tagName === 'SELECT') {
@@ -141,11 +140,11 @@ function renderHeader(visibleBarbers) {
             : `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}`;
 
         const th = document.createElement('div');
-        th.className = 'flex-1 min-w-[150px] p-3 text-center border-r border-zinc-800/50 text-zinc-200 font-medium text-sm bg-zinc-900/40';
+        th.className = 'flex-1 min-w-[85vw] sm:min-w-[250px] md:min-w-[200px] p-3 text-center border-r border-zinc-800/50 text-zinc-200 font-medium text-sm bg-zinc-900/40 snap-col';
         th.innerHTML = `
             <div class="flex flex-col items-center justify-center gap-2">
                 <div class="relative">
-                    <img src="${avatarUrl}" alt="${barber.name}" class="w-10 h-10 rounded-full bg-zinc-800 border-2 border-zinc-700 object-cover">
+                    <img src="${avatarUrl}" alt="${barber.name}" class="w-10 h-10 rounded-full bg-zinc-800 border-2 border-zinc-700 object-cover shadow-md">
                     <div class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-zinc-900"></div>
                 </div>
                 <span class="truncate w-full font-semibold tracking-wide">${barber.name}</span>
@@ -216,7 +215,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
 
     visibleBarbers.forEach(barber => {
         const bCol = document.createElement('div');
-        bCol.className = 'flex-1 min-w-[150px] border-r border-zinc-800/50 relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 group';
+        bCol.className = 'flex-1 min-w-[85vw] sm:min-w-[250px] md:min-w-[200px] border-r border-zinc-800/50 relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 group snap-col';
         
         bCol.addEventListener('dragover', (e) => {
             e.preventDefault(); 
@@ -474,13 +473,9 @@ if (els.btnEnableNotifications) {
         try {
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
-                // CHAVE VAPID: Vá no Firebase Console > Project Settings > Cloud Messaging > Web configuration > Generate Key pair
-                // Substitua a string abaixo pela chave pública gerada lá.
                 const currentToken = await getToken(messaging, { vapidKey: 'BExxxxxxxxxxxxxxxxxxxxxxxxxxxxxSUA_CHAVE_VAPID_AQUIxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
                 if (currentToken) {
                     console.log('Token FCM:', currentToken);
-                    // Aqui você pode salvar o token no documento do administrador logado
-                    // Exemplo: await updateDoc(doc(db, "employees", adminId), { fcmToken: currentToken });
                     alert('Notificações ativadas! Você será avisado sobre agendamentos.');
                 }
             } else {
@@ -595,7 +590,6 @@ els.form.onsubmit = async (e) => {
         }
 
         // --- DISPARAR NOTIFICAÇÃO PRO BACKEND (API) ---
-        // Apenas para testes, não vai travar o salvamento se a API falhar.
         try {
             await fetch(API_NOTIFICACOES_URL, {
                 method: 'POST',
