@@ -2,6 +2,11 @@ import { db, auth } from './firebase-config.js';
 import { collection, query, where, getDocs, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// AUTO-LOGIN: Se já houver dados no localStorage, entra direto
+if (localStorage.getItem('loggedBarberId')) {
+    window.location.replace('pagebarber.html');
+}
+
 const form = document.getElementById('login-form');
 const errorMsg = document.getElementById('error-msg');
 const btnLogin = document.getElementById('btn-login');
@@ -11,6 +16,7 @@ form.addEventListener('submit', async (e) => {
     
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value.trim();
+    const rememberMe = document.getElementById('remember-me').checked;
     
     btnLogin.disabled = true;
     btnLogin.innerHTML = '<span class="animate-pulse">Autenticando...</span>';
@@ -31,39 +37,38 @@ form.addEventListener('submit', async (e) => {
 
         console.log("2. Tentando login no Firebase Auth...");
         try {
-            // Tenta o login normal
             await signInWithEmailAndPassword(auth, email, password);
             console.log("Login Auth bem-sucedido!");
             
         } catch (authError) {
-            // Se der erro de credencial, verificamos se é o primeiro acesso (Mágica do Plano B)
             if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found') {
                 
                 if (userData.needsAuthCreation && userData.password === password) {
                     console.log("3. Primeiro acesso detectado. Criando conta no Auth...");
                     
-                    // Cria o usuário no Auth
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     
                     console.log("4. Conta criada! Limpando senha do Firestore por segurança...");
-                    // Atualiza o documento: Remove a senha em texto puro e a flag de primeiro acesso
                     await updateDoc(docSnap.ref, {
                         password: deleteField(),
                         needsAuthCreation: false,
-                        authUid: userCredential.user.uid // Vincula o ID oficial
+                        authUid: userCredential.user.uid
                     });
                 } else {
                     throw new Error("Senha incorreta.");
                 }
             } else {
-                throw authError; // Repassa outros erros (ex: internet caiu)
+                throw authError; 
             }
         }
 
         console.log("5. Sucesso! Salvando sessão e redirecionando...");
-        sessionStorage.setItem('loggedBarberId', userId);
-        sessionStorage.setItem('loggedBarberName', userData.name);
-        sessionStorage.setItem('loggedBarberPhoto', userData.photoUrl || '');
+        
+        // Se pediu para lembrar, salva no localStorage. Senão, no sessionStorage.
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem('loggedBarberId', userId);
+        storage.setItem('loggedBarberName', userData.name);
+        storage.setItem('loggedBarberPhoto', userData.photoUrl || '');
 
         window.location.replace('pagebarber.html'); 
 

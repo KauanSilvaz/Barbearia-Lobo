@@ -2,9 +2,9 @@ import { db } from './firebase-config.js';
 import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // --- VERIFICAÇÃO DE LOGIN ---
-const loggedBarberId = sessionStorage.getItem('loggedBarberId');
-const loggedBarberName = sessionStorage.getItem('loggedBarberName');
-const loggedBarberPhoto = sessionStorage.getItem('loggedBarberPhoto');
+const loggedBarberId = localStorage.getItem('loggedBarberId') || sessionStorage.getItem('loggedBarberId');
+const loggedBarberName = localStorage.getItem('loggedBarberName') || sessionStorage.getItem('loggedBarberName');
+const loggedBarberPhoto = localStorage.getItem('loggedBarberPhoto') || sessionStorage.getItem('loggedBarberPhoto');
 
 if (!loggedBarberId) {
     window.location.href = 'login.html';
@@ -44,7 +44,7 @@ const app = {
     historyData: [],
     users: [],
     services: [],
-    currentEmployee: null, // Armazena os dados do barbeiro atual
+    currentEmployee: null, 
     isCreatingNewClient: false,
     currentPaymentTotal: 0,
 
@@ -52,7 +52,29 @@ const app = {
         app.setupFirebaseListeners();
         app.syncCompanyLogo();
         app.setupPaymentListeners();
+        
+        // Garante que o botão do mobile chame a abertura do modal corretamente
+        document.getElementById('fab-new').onclick = () => app.openModal();
+        
         lucide.createIcons();
+    },
+
+    showToast: (msg) => {
+        const existing = document.getElementById('custom-toast');
+        if (existing) existing.remove();
+        
+        const toast = document.createElement('div');
+        toast.id = 'custom-toast';
+        toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-red-600 text-white px-5 py-3 rounded-xl shadow-2xl z-[100] animate-slideUp text-sm font-bold border border-red-500 flex items-center gap-2 transition-all duration-300';
+        toast.innerHTML = `<i data-lucide="alert-circle" class="w-5 h-5"></i> ${msg}`;
+        document.body.appendChild(toast);
+        if (window.lucide) lucide.createIcons();
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
     },
 
     syncCompanyLogo: () => {
@@ -66,11 +88,10 @@ const app = {
     },
 
     setupFirebaseListeners: () => {
-        // Escuta os dados do barbeiro logado (para saber horários e bloqueios)
         onSnapshot(doc(db, "employees", loggedBarberId), (docSnap) => {
             if (docSnap.exists()) {
                 app.currentEmployee = docSnap.data();
-                app.renderGrid(); // Atualiza a grelha sempre que o status mudar
+                app.renderGrid(); 
             }
         });
 
@@ -134,7 +155,6 @@ const app = {
             if (a.date === todayStr) clientsTodayCount++;
         });
 
-        // Atualiza a UI para mostrar o Total e os 50% de comissão
         document.getElementById('metric-today-money').innerHTML = `€ ${moneyToday.toFixed(2)} <span class="block text-[11px] text-emerald-400 mt-1 border-t border-zinc-700/50 pt-1">Teu: € ${(moneyToday * 0.5).toFixed(2)}</span>`;
         document.getElementById('metric-month-money').innerHTML = `€ ${moneyMonth.toFixed(2)} <span class="block text-[11px] text-emerald-400 mt-1 border-t border-zinc-700/50 pt-1">Teu: € ${(moneyMonth * 0.5).toFixed(2)}</span>`;
         
@@ -167,7 +187,7 @@ const app = {
 
     renderGrid: () => {
         const emp = app.currentEmployee;
-        if (!emp) return; // Aguarda carregar dados do barbeiro
+        if (!emp) return; 
 
         const header = document.getElementById('grid-header');
         const body = document.getElementById('grid-body');
@@ -177,8 +197,6 @@ const app = {
         const dateKey = getLocalYYYYMMDD(app.currentDate);
         dateDisplay.innerText = todayStr === dateKey ? 'Hoje' : app.currentDate.toLocaleDateString('pt-PT', {day:'numeric', month:'short'});
 
-        // REGRAS DE BLOQUEIO GERAL:
-        // 1. Se estiver bloqueado administrativamente
         if (emp.isBlocked) {
             body.innerHTML = `
                 <div class="h-full w-full bg-red-950/20 flex flex-col items-center justify-center p-6 text-center">
@@ -193,37 +211,13 @@ const app = {
             return;
         }
 
-        // 2. Verifica se AGORA está dentro do seu horário de trabalho real (para uso do sistema)
-        const now = new Date();
-        const nowMins = now.getHours() * 60 + now.getMinutes();
-        const realDayStr = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][now.getDay()];
-        
-        const worksRealToday = emp.schedule?.days?.includes(realDayStr) ?? true;
-        const workStartMins = timeToMins(emp.schedule?.workStart || '09:00');
-        const workEndMins = timeToMins(emp.schedule?.workEnd || '20:00');
-        
-        const isCurrentlyWorking = worksRealToday && (nowMins >= workStartMins && nowMins <= workEndMins);
-
-        if (!isCurrentlyWorking) {
-            body.innerHTML = `
-                <div class="h-full w-full bg-red-950/20 flex flex-col items-center justify-center p-6 text-center">
-                    <div class="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-4 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                        <i data-lucide="clock-8" class="w-8 h-8"></i>
-                    </div>
-                    <h2 class="text-xl font-bold text-red-500 uppercase tracking-widest">Fora do Horário</h2>
-                    <p class="text-sm text-red-400 mt-2 max-w-sm">O sistema só pode ser utilizado no teu horário e dias de trabalho definidos.<br><strong class="text-white mt-1 block">Expediente: ${emp.schedule?.workStart || '09:00'} às ${emp.schedule?.workEnd || '20:00'}</strong></p>
-                </div>`;
-            header.innerHTML = '';
-            if (window.lucide) lucide.createIcons();
-            return;
-        }
-
-        // Se passar as regras de bloqueio, renderiza a agenda normal
         const targetDayStr = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][app.currentDate.getDay()];
         const worksTargetDate = emp.schedule?.days?.includes(targetDayStr) ?? true;
+        const workStartMins = timeToMins(emp.schedule?.workStart || '09:00');
+        const workEndMins = timeToMins(emp.schedule?.workEnd || '20:00');
         const lunchStartMins = timeToMins(emp.schedule?.lunchStart || '12:00');
         const lunchEndMins = timeToMins(emp.schedule?.lunchEnd || '13:00');
-        const isPastDate = dateKey < todayStr; // Imutabilidade de dados passados
+        const isPastDate = dateKey < todayStr; 
 
         header.innerHTML = `
             <div class="w-16 border-r border-zinc-800/50 bg-zinc-900/50"></div>
@@ -259,8 +253,11 @@ const app = {
                     slotsHTML += `
                         <div class="w-full mb-1 rounded-lg border-l-4 p-2 shadow-sm ${statusClass} cursor-pointer transition-colors" onclick="app.openModal('${appt.id}')">
                             <div class="flex justify-between items-start">
-                                <p class="text-sm font-bold text-white truncate ${appt.status === 'completed' ? 'line-through text-zinc-400' : ''}">${clientName}</p>
-                                <span class="text-[10px] text-zinc-400 font-mono bg-zinc-950/50 px-1.5 py-0.5 rounded border border-zinc-800/50">
+                                <div class="flex items-center truncate">
+                                    <p class="text-sm font-bold text-white truncate ${appt.status === 'completed' ? 'line-through text-zinc-400' : ''}">${clientName}</p>
+                                    ${appt.notes ? `<i data-lucide="message-square-text" class="w-3.5 h-3.5 text-sky-400 ml-1.5 flex-shrink-0"></i>` : ''}
+                                </div>
+                                <span class="text-[10px] text-zinc-400 font-mono bg-zinc-950/50 px-1.5 py-0.5 rounded border border-zinc-800/50 flex-shrink-0 ml-2">
                                     ${formatMinutesToTime(appt.startTime)} - ${endTimeDisplay}
                                 </span>
                             </div>
@@ -341,8 +338,10 @@ const app = {
     },
 
     openModal: (id = null, startMins = null) => {
-        // Trava de segurança extra
-        if (app.currentEmployee?.isBlocked) return;
+        if (app.currentEmployee?.isBlocked) {
+            app.showToast("Acesso bloqueado pela gerência.");
+            return;
+        }
 
         const form = document.getElementById('appt-form');
         const actions = document.getElementById('edit-actions');
@@ -353,7 +352,7 @@ const app = {
         const isPastDate = dateKey < todayStr;
 
         if (isPastDate && !id) {
-            alert("Não é possível adicionar agendamentos no passado.");
+            app.showToast("Não é possível adicionar agendamentos no passado.");
             return;
         }
 
@@ -367,11 +366,20 @@ const app = {
 
         document.getElementById('appt-id').value = '';
         document.getElementById('appt-date').value = dateKey;
+        document.getElementById('appt-notes').value = '';
         
         if (startMins !== null) {
             document.getElementById('appt-time').value = formatMinutesToTime(startMins);
         } else {
-            document.getElementById('appt-time').value = "09:00";
+            if (dateKey === todayStr) {
+                const now = new Date();
+                let m = now.getMinutes();
+                m = Math.ceil(m / 5) * 5; 
+                if (m === 60) { m = 0; now.setHours(now.getHours() + 1); }
+                document.getElementById('appt-time').value = formatMinutesToTime(now.getHours() * 60 + m);
+            } else {
+                document.getElementById('appt-time').value = "09:00";
+            }
         }
 
         let currentAppt = null;
@@ -383,12 +391,12 @@ const app = {
                 document.getElementById('appt-service').value = currentAppt.serviceId || '';
                 document.getElementById('appt-date').value = currentAppt.date;
                 document.getElementById('appt-time').value = formatMinutesToTime(currentAppt.startTime);
+                document.getElementById('appt-notes').value = currentAppt.notes || ''; 
             }
         }
 
-        // Regra de Imutabilidade: Oculta botões se for do Passado OU se já estiver Concluído
         const isReadOnly = isPastDate || (currentAppt && currentAppt.status === 'completed');
-        const formInputs = document.querySelectorAll('#appt-form input:not(#appt-id), #appt-form select');
+        const formInputs = document.querySelectorAll('#appt-form input:not(#appt-id), #appt-form select, #appt-form textarea');
         formInputs.forEach(input => input.disabled = isReadOnly);
         document.getElementById('btn-toggle-client').style.display = isReadOnly ? 'none' : 'flex';
 
@@ -411,12 +419,12 @@ const app = {
         }
 
         document.getElementById('appointment-modal').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
     },
 
     closeModal: () => document.getElementById('appointment-modal').classList.add('hidden'),
 
     saveAppt: async () => {
-        // Validações de segurança
         if (app.currentEmployee?.isBlocked) return;
         const apptDate = document.getElementById('appt-date').value;
         if (apptDate < getLocalYYYYMMDD(new Date())) {
@@ -469,7 +477,8 @@ const app = {
             serviceName: service.name,
             clientName: clientName, 
             userId: userId,
-            status: "confirmed" 
+            status: "confirmed",
+            notes: document.getElementById('appt-notes').value
         };
 
         try {
@@ -496,7 +505,6 @@ const app = {
         const booking = app.appointments.find(a => a.id === id);
         if (!booking) return;
 
-        // Regra do Passado para Pagamentos
         if (booking.date < getLocalYYYYMMDD(new Date())) {
             alert("Este agendamento pertence ao passado e é imutável.");
             return;
@@ -640,7 +648,6 @@ const app = {
         
         const booking = app.appointments.find(a => a.id === id);
         
-        // Proteção extra no backend-side (Firestore call)
         if (booking) {
             if (booking.date < getLocalYYYYMMDD(new Date())) {
                 alert("Não é possível excluir agendamentos passados.");
@@ -665,6 +672,7 @@ const app = {
 
     logout: () => {
         sessionStorage.clear();
+        localStorage.clear();
         window.location.href = 'login.html';
     }
 };

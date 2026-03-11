@@ -3,13 +3,13 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAmljKXhjb9GlY1ABEA-GPJqNsftsv_hVk",
-  authDomain: "ksstech-79520.firebaseapp.com",
-  projectId: "ksstech-79520",
-  storageBucket: "ksstech-79520.firebasestorage.app",
-  messagingSenderId: "935997511388",
-  appId: "1:935997511388:web:9c336727d3e588ee30c619",
-  measurementId: "G-TM49C8N0T1"
+  apiKey: "AIzaSyBloVa9ljCgsi7PVS5r7GyhMVfCAutKnJM",
+  authDomain: "barbeariasaas-b0893.firebaseapp.com",
+  projectId: "barbeariasaas-b0893",
+  storageBucket: "barbeariasaas-b0893.firebasestorage.app",
+  messagingSenderId: "467961031517",
+  appId: "1:467961031517:web:aa2b367f48782cc1ed16b4",
+  measurementId: "G-53WGFML5HF"
 };
 
 firebase.initializeApp(firebaseConfig);

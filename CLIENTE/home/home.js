@@ -27,6 +27,7 @@ const els = {
     formBarber: document.getElementById('form-barber'),
     formDate: document.getElementById('form-date'),
     formTime: document.getElementById('form-time'),
+    formNotes: document.getElementById('form-notes'),
     btnDelete: document.getElementById('btn-delete'),
     btnCloseModal: document.getElementById('btn-close-modal'),
     modalActions: document.getElementById('modal-actions'),
@@ -140,7 +141,7 @@ function renderHeader(visibleBarbers) {
             : `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}`;
 
         const th = document.createElement('div');
-        th.className = 'flex-1 min-w-[85vw] sm:min-w-[250px] md:min-w-[200px] p-3 text-center border-r border-zinc-800/50 text-zinc-200 font-medium text-sm bg-zinc-900/40 snap-col';
+        th.className = 'w-[calc(100vw-4rem)] md:flex-1 md:w-auto md:min-w-[200px] flex-none p-3 text-center border-r border-zinc-800/50 text-zinc-200 font-medium text-sm bg-zinc-900/40 snap-col shrink-0';
         th.innerHTML = `
             <div class="flex flex-col items-center justify-center gap-2">
                 <div class="relative">
@@ -215,7 +216,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
 
     visibleBarbers.forEach(barber => {
         const bCol = document.createElement('div');
-        bCol.className = 'flex-1 min-w-[85vw] sm:min-w-[250px] md:min-w-[200px] border-r border-zinc-800/50 relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 group snap-col';
+        bCol.className = 'w-[calc(100vw-4rem)] md:flex-1 md:w-auto md:min-w-[200px] flex-none border-r border-zinc-800/50 relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 group snap-col shrink-0';
         
         bCol.addEventListener('dragover', (e) => {
             e.preventDefault(); 
@@ -316,6 +317,30 @@ function renderGrid(visibleBarbers, currentDateStr) {
                 const topPx = (startMins * pixelsPerMinute) + topPadding;
                 const heightPx = duration * pixelsPerMinute;
 
+                // --- CÓDIGO NOVO: Linhas e Etiquetas Sempre Visíveis ---
+                const topLine = document.createElement('div');
+                topLine.className = 'absolute left-0 w-full border-t-[1.5px] border-red-500 z-10 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.6)] opacity-50';
+                topLine.style.top = `${topPx}px`;
+
+                const bottomLine = document.createElement('div');
+                bottomLine.className = 'absolute left-0 w-full border-t-[1.5px] border-red-500 z-10 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.6)] opacity-50';
+                bottomLine.style.top = `${topPx + heightPx}px`;
+
+                const topBadge = document.createElement('div');
+                topBadge.className = 'absolute right-0 bg-red-600/90 text-white text-[11px] font-bold px-2 py-0.5 rounded-l-md shadow-lg z-20 transform -translate-y-1/2';
+                topBadge.style.top = `${topPx}px`;
+                topBadge.textContent = formatMinutesToTime(appt.startTime);
+
+                const bottomBadge = document.createElement('div');
+                bottomBadge.className = 'absolute right-0 bg-red-600/90 text-white text-[11px] font-bold px-2 py-0.5 rounded-l-md shadow-lg z-20 transform -translate-y-1/2';
+                bottomBadge.style.top = `${topPx + heightPx}px`;
+                bottomBadge.textContent = formatMinutesToTime(appt.startTime + duration);
+
+                linesContent.appendChild(topLine);
+                linesContent.appendChild(bottomLine);
+                timeCol.appendChild(topBadge);
+                timeCol.appendChild(bottomBadge);
+
                 let colorClasses = "border-l-zinc-500 bg-zinc-900 border-zinc-800";
                 let iconColor = "text-zinc-400";
                 let dotColor = "bg-zinc-500";
@@ -377,6 +402,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
                             <div class="flex items-center gap-1.5 truncate">
                                 <div class="w-2 h-2 rounded-full ${dotColor} flex-shrink-0 shadow-sm"></div>
                                 <span class="font-bold truncate text-[12px] leading-tight ${textDecorationClass}">${displayName}</span>
+                                ${appt.notes ? `<i data-lucide="message-square-text" class="w-3 h-3 text-sky-400 ml-1 flex-shrink-0"></i>` : ''}
                             </div>
                             ${appt.status === 'completed' 
                                 ? `<i data-lucide="check-check" class="w-4 h-4 flex-shrink-0 text-emerald-500"></i>` 
@@ -400,6 +426,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
                     e.stopPropagation();
                     openModal({ ...appt, displayName: clientUser ? displayName : appt.clientName });
                 };
+
                 bCol.appendChild(card);
             });
         });
@@ -443,6 +470,7 @@ function openModal(data = {}) {
     els.formBarber.value = data.barberId || state.barbers[0]?.id || '';
     els.formService.value = data.serviceId || state.services[0]?.id || '';
     els.formTime.value = data.startTime ? formatMinutesToTime(data.startTime) : '09:00';
+    els.formNotes.value = data.notes || ''; 
 
     if (data.id) {
         els.btnDelete.classList.remove('hidden');
@@ -465,26 +493,6 @@ function updateSelectOptions(selectEl, data, defaultText = null) {
     selectEl.innerHTML = '';
     if (defaultText) selectEl.add(new Option(defaultText, 'all'));
     data.forEach(item => selectEl.add(new Option(item.name, item.id)));
-}
-
-// --- NOTIFICAÇÕES: SOLICITAR PERMISSÃO ---
-if (els.btnEnableNotifications) {
-    els.btnEnableNotifications.onclick = async () => {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                const currentToken = await getToken(messaging, { vapidKey: 'BExxxxxxxxxxxxxxxxxxxxxxxxxxxxxSUA_CHAVE_VAPID_AQUIxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
-                if (currentToken) {
-                    console.log('Token FCM:', currentToken);
-                    alert('Notificações ativadas! Você será avisado sobre agendamentos.');
-                }
-            } else {
-                alert('Permissão para notificações não foi concedida.');
-            }
-        } catch (error) {
-            console.error('Erro ao pedir permissão de notificação:', error);
-        }
-    };
 }
 
 window.app = {
@@ -578,6 +586,7 @@ els.form.onsubmit = async (e) => {
             clientName: clientName, 
             status: els.formStatus.value || "confirmed",
             userId: userId, 
+            notes: els.formNotes.value 
         };
 
         const isNew = !els.formId.value;
@@ -589,7 +598,6 @@ els.form.onsubmit = async (e) => {
             await addDoc(collection(db, "bookings"), bookingData);
         }
 
-        // --- DISPARAR NOTIFICAÇÃO PRO BACKEND (API) ---
         try {
             await fetch(API_NOTIFICACOES_URL, {
                 method: 'POST',
@@ -605,7 +613,6 @@ els.form.onsubmit = async (e) => {
         } catch (notifErr) {
             console.log("Aviso: Notificação não enviada (API não configurada ainda).", notifErr);
         }
-        // ----------------------------------------------
 
         closeModal();
     } catch (error) {
@@ -624,7 +631,6 @@ els.btnDelete.onclick = async () => {
 
         await deleteDoc(doc(db, "bookings", bookingId));
 
-        // --- DISPARAR NOTIFICAÇÃO DE CANCELAMENTO ---
         if (bookingData) {
             try {
                 await fetch(API_NOTIFICACOES_URL, {
@@ -642,7 +648,6 @@ els.btnDelete.onclick = async () => {
                 console.log("Aviso: Notificação não enviada.", notifErr);
             }
         }
-        // ----------------------------------------------
 
         closeModal();
     }
@@ -775,5 +780,7 @@ els.paymentForm.onsubmit = async (e) => {
         if (window.lucide) lucide.createIcons();
     }
 };
+
+document.getElementById('fab-new').onclick = () => openModal();
 
 initFirebaseSync();
