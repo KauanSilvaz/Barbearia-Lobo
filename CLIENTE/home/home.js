@@ -854,16 +854,31 @@ els.paymentForm.onsubmit = async (e) => {
         const bookingData = state.appointments.find(a => a.id === bookingId);
         const change = method === 'dinheiro' ? (received - currentPaymentTotal) : 0;
         
+        // --- BUSCANDO O NOME DO CLIENTE CRUZANDO O ID ---
+        let finalClientName = "Cliente Desconhecido";
+        
+        if (bookingData.userId) {
+            // Procura o usuário na lista state.users que já foi carregada do Firebase
+            const clientUser = state.users.find(u => u.id === bookingData.userId);
+            if (clientUser && clientUser.name) {
+                finalClientName = clientUser.name;
+            } else if (bookingData.clientName) { // Fallback de segurança
+                finalClientName = bookingData.clientName;
+            }
+        } else if (bookingData.clientName) {
+            finalClientName = bookingData.clientName;
+        }
+
         const transactionData = {
             originalBookingId: bookingId,
             companyId: bookingData.companyId || "sami",
-            userId: bookingData.userId,
-            clientName: bookingData.clientName,
-            barberId: bookingData.barberId,
-            barberName: bookingData.barberName,
-            serviceId: bookingData.serviceId,
-            serviceName: bookingData.serviceName,
-            scheduledDate: bookingData.date,
+            userId: bookingData.userId || "",
+            clientName: finalClientName, // Agora ele salva o nome bonitinho
+            barberId: bookingData.barberId || "",
+            barberName: bookingData.barberName || "Barbeiro",
+            serviceId: bookingData.serviceId || "",
+            serviceName: bookingData.serviceName || "Serviço",
+            scheduledDate: bookingData.date || getLocalYYYYMMDD(new Date()),
             completedAt: new Date().toISOString(),
             duration: (bookingData.endTime && bookingData.startTime) ? (bookingData.endTime - bookingData.startTime) : 0,
             currency: 'EUR',
