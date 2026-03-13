@@ -160,7 +160,7 @@ const app = {
         data.forEach(item => selectEl.add(new Option(item.name, item.id)));
     },
 
-    updateMetrics: () => {
+updateMetrics: () => {
         const todayStr = getLocalYYYYMMDD(app.currentDate);
         const currentMonth = app.currentDate.getMonth();
         const currentYear = app.currentDate.getFullYear();
@@ -171,10 +171,12 @@ const app = {
         let clientsTodayCount = 0;
 
         app.historyData.forEach(h => {
-            const hDate = new Date(h.date || h.completedAt);
+            // Puxa a data de onde ela estiver (Admin salva como scheduledDate, barbeiro salva como date)
+            const dateField = h.date || h.scheduledDate || (h.completedAt ? h.completedAt.split('T')[0] : ''); 
+            const hDate = new Date(h.completedAt || dateField); 
             const price = Number(h.finalPrice || h.price) || 0;
 
-            if (h.date === todayStr) moneyToday += price;
+            if (dateField === todayStr) moneyToday += price;
             
             if (hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear) {
                 moneyMonth += price;
@@ -558,22 +560,34 @@ const app = {
         if (window.lucide) lucide.createIcons();
     },
 
-    renderHistory: () => {
+renderHistory: () => {
         const list = document.getElementById('history-list');
-        const past = [...app.historyData].sort((a,b) => new Date(b.completedAt || b.date) - new Date(a.completedAt || a.date));
+        
+        // Ordena do mais recente pro mais antigo usando a data que existir
+        const past = [...app.historyData].sort((a,b) => {
+            const dateA = new Date(a.completedAt || a.scheduledDate || a.date || 0);
+            const dateB = new Date(b.completedAt || b.scheduledDate || b.date || 0);
+            return dateB - dateA;
+        });
         
         if (past.length === 0) {
             list.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-zinc-500 text-sm">Nenhum histórico encontrado.</td></tr>`;
             return;
         }
 
-        list.innerHTML = past.map(a => `
+        list.innerHTML = past.map(a => {
+            // Puxa a data de onde ela estiver salva para não dar erro no split
+            const rawDate = a.date || a.scheduledDate || (a.completedAt ? a.completedAt.split('T')[0] : '');
+            const formattedDate = (rawDate && rawDate.includes('-')) ? rawDate.split('-').reverse().join('/') : 'Sem data';
+
+            return `
             <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                <td class="py-3 pl-2 text-zinc-400 text-xs">${a.date.split('-').reverse().join('/')}</td>
+                <td class="py-3 pl-2 text-zinc-400 text-xs">${formattedDate}</td>
                 <td class="py-3 font-medium text-white text-xs">${a.clientName || 'Cliente'}</td>
                 <td class="py-3 text-zinc-400 text-xs">${a.serviceName || 'Serviço'}</td>
                 <td class="py-3 text-right pr-2 text-emerald-500 font-bold text-xs">€ ${Number(a.finalPrice || a.price || 0).toFixed(2)}</td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
     },
 
     toggleClient: () => {
