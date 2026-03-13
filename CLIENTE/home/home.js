@@ -113,8 +113,18 @@ function initFirebaseSync() {
         }
     });
 
-    onSnapshot(collection(db, "employees"), (snapshot) => {
-        state.barbers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+onSnapshot(collection(db, "employees"), (snapshot) => {
+        // Primeiro, mapeia todos os funcionários
+        const allEmployees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Filtra para manter apenas os que têm a tag "Barbeiro"
+        state.barbers = allEmployees.filter(emp => {
+            if (Array.isArray(emp.role)) {
+                return emp.role.includes("Barbeiro"); // Novo formato (array de funções)
+            }
+            return emp.role === "Barbeiro"; // Fallback de segurança para dados antigos
+        });
+
         updateSelectOptions(els.barberFilter, state.barbers, "Todos os Barbeiros");
         updateSelectOptions(els.formBarber, state.barbers);
         renderApp();
