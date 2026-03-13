@@ -553,8 +553,6 @@ function renderGrid(visibleBarbers, currentDateStr) {
     if (window.lucide) lucide.createIcons();
 }
 
-
-
 function renderApp() {
     const currentDateStr = getLocalYYYYMMDD(state.currentDate);
     els.currentMonthDisplay.textContent = state.currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -636,6 +634,15 @@ document.getElementById('btn-new-appt').onclick = () => openModal();
 document.getElementById('btn-next-days').onclick = () => { state.currentDate.setDate(state.currentDate.getDate() + 1); renderApp(); };
 document.getElementById('btn-prev-days').onclick = () => { state.currentDate.setDate(state.currentDate.getDate() - 1); renderApp(); };
 document.getElementById('btn-today').onclick = () => { state.currentDate = new Date(); renderApp(); };
+
+// FORÇA O CALENDÁRIO A ABRIR QUANDO CLICAR NO TEXTO/ÍCONE
+document.getElementById('btn-current-month').onclick = () => {
+    try {
+        els.calendarPicker.showPicker(); 
+    } catch (e) {
+        els.calendarPicker.focus();
+    }
+};
 
 els.calendarPicker.addEventListener('change', (e) => {
     if (e.target.value) {
