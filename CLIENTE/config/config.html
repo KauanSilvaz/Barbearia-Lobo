@@ -189,22 +189,34 @@
             <form id="employee-form" class="p-4 sm:p-6 space-y-5 max-h-[75vh] sm:max-h-[80vh] overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="emp-id">
                 
-                <div class="flex flex-col sm:flex-row items-center gap-4 p-4 bg-zinc-950 rounded-xl border border-zinc-800">
-                    <div class="relative flex-shrink-0">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-zinc-950 rounded-xl border border-zinc-800">
+                    <div class="relative flex-shrink-0 mx-auto sm:mx-0">
                         <img id="emp-img-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=perfil" 
-                            class="w-20 h-20 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800">
-                        <div id="emp-img-placeholder" class="absolute inset-0 rounded-full bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 hidden">
+                            class="w-20 h-20 sm:w-16 sm:h-16 rounded-full object-cover border-[3px] border-amber-500 bg-zinc-800 transition-colors duration-300" style="border-color: #f59e0b;">
+                        <div id="emp-img-placeholder" class="absolute inset-0 rounded-full bg-zinc-800 flex items-center justify-center border-[3px] border-amber-500 hidden transition-colors duration-300" style="border-color: #f59e0b;">
                             <i data-lucide="user" class="w-8 h-8 text-zinc-600"></i>
                         </div>
                     </div>
                     
-                    <div class="flex-1 w-full space-y-1.5">
-                        <label class="text-xs font-bold text-zinc-500 uppercase">URL da Foto de Perfil</label>
-                        <div class="relative">
-                            <i data-lucide="link" class="absolute left-3 top-3.5 w-4 h-4 text-zinc-500"></i>
-                            <input type="url" id="emp-photo-url" placeholder="https://exemplo.com/foto.jpg" 
-                                class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-3 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors"
-                                oninput="app.updateEmployeePhotoPreview(this.value)">
+                    <div class="flex-1 w-full space-y-3">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-zinc-500 uppercase">URL da Foto de Perfil</label>
+                            <div class="relative">
+                                <i data-lucide="link" class="absolute left-3 top-3.5 w-4 h-4 text-zinc-500"></i>
+                                <input type="url" id="emp-photo-url" placeholder="https://exemplo.com/foto.jpg" 
+                                    class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-3 text-sm text-zinc-100 focus:outline-none focus:border-amber-600 transition-colors"
+                                    oninput="app.updateEmployeePhotoPreview(this.value)">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5 w-full">
+                            <label class="text-xs font-bold text-zinc-500 uppercase">Cor do Barbeiro</label>
+                            <div class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
+                                <input type="color" id="emp-color" value="#f59e0b" 
+                                    class="w-8 h-8 rounded cursor-pointer bg-transparent border-none p-0 outline-none"
+                                    oninput="document.getElementById('emp-img-preview').style.borderColor = this.value; document.getElementById('emp-img-placeholder').style.borderColor = this.value;">
+                                <span class="text-xs text-zinc-400 font-medium">Cor de destaque (aro da foto)</span>
+                            </div>
                         </div>
                     </div>
                 </div>

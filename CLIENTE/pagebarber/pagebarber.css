@@ -45,3 +45,18 @@ input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
 }
+
+/* Esconder barra de rolagem horizontal nativa nos containers */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Comportamento de Snap para a grade (se necessário no futuro) */
+#grid-body, #grid-header {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}

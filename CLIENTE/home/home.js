@@ -9,6 +9,7 @@ const state = {
     barbers: [],
     services: [],
     users: [], 
+    schedule: null,
     currentDate: new Date(),
     selectedBarber: 'all',
 };
@@ -60,7 +61,7 @@ els.gridBody.addEventListener('scroll', () => {
 
 let isCreatingNewClient = false;
 
-// URL DA SUA API NO BACKEND (Exemplo Vercel)
+// URL DA SUA API NO BACKEND
 const API_NOTIFICACOES_URL = '/api/enviar-notificacao'; 
 
 if (els.formTime.tagName === 'SELECT') {
@@ -73,7 +74,7 @@ if (els.formTime.tagName === 'SELECT') {
     els.formTime = timeInput;
 }
 
-// --- UTILS ---
+// --- UTILS & FUSO HORÁRIO MAIA/PORTUGAL ---
 const getLocalYYYYMMDD = (date) => {
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().split('T')[0];
@@ -85,9 +86,31 @@ const formatMinutesToTime = (minutes) => {
     return `${h}:${m}`;
 };
 
+const getLisbonDateObj = () => {
+    const lisbonTimeStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Lisbon" });
+    return new Date(lisbonTimeStr);
+};
+
+const getLisbonCurrentDateStr = () => {
+    const now = getLisbonDateObj();
+    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+};
+
+const getLisbonCurrentTime = () => {
+    const now = getLisbonDateObj();
+    return { h: now.getHours(), m: now.getMinutes() };
+};
+
 // --- FIREBASE SYNC ---
 function initFirebaseSync() {
     syncCompanyLogo();
+
+    onSnapshot(doc(db, "settings", "schedule"), (snapshot) => {
+        if (snapshot.exists()) {
+            state.schedule = snapshot.data();
+            renderApp();
+        }
+    });
 
     onSnapshot(collection(db, "employees"), (snapshot) => {
         state.barbers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -139,14 +162,16 @@ function renderHeader(visibleBarbers) {
         const avatarUrl = barber.photoUrl && barber.photoUrl.trim() !== '' 
             ? barber.photoUrl 
             : `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}`;
+            
+        const barberColor = barber.color || '#f59e0b';
 
         const th = document.createElement('div');
         th.className = 'w-[calc(100vw-4rem)] md:flex-1 md:w-auto md:min-w-[200px] flex-none p-3 text-center border-r border-zinc-800/50 text-zinc-200 font-medium text-sm bg-zinc-900/40 snap-col shrink-0';
         th.innerHTML = `
             <div class="flex flex-col items-center justify-center gap-2">
                 <div class="relative">
-                    <img src="${avatarUrl}" alt="${barber.name}" class="w-10 h-10 rounded-full bg-zinc-800 border-2 border-zinc-700 object-cover shadow-md">
-                    <div class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-zinc-900"></div>
+                    <img src="${avatarUrl}" alt="${barber.name}" class="w-10 h-10 rounded-full bg-zinc-800 border-[3px] object-cover shadow-md transition-colors" style="border-color: ${barberColor};">
+                    <div class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-zinc-900 transition-colors" style="background-color: ${barberColor};"></div>
                 </div>
                 <span class="truncate w-full font-semibold tracking-wide">${barber.name}</span>
             </div>
@@ -158,11 +183,54 @@ function renderHeader(visibleBarbers) {
 function renderGrid(visibleBarbers, currentDateStr) {
     els.gridBody.innerHTML = '';
     
-    const startHour = 8; 
-    const endHour = 22; 
+    // CORREÇÃO: Dias com a primeira letra maiúscula para casar com o banco do config.js!
+    const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const dayOfWeek = daysMap[state.currentDate.getDay()];
+
+    let startHour = 8; 
+    let endHour = 22; // Default
+
+    // Puxa o horário da EMPRESA dinâmico das configurações do Firebase
+    if (state.schedule) {
+        if (state.schedule.dailySchedules && state.schedule.dailySchedules[dayOfWeek]) {
+            const dayConfig = state.schedule.dailySchedules[dayOfWeek];
+            if (dayConfig.active) {
+                if (dayConfig.open) startHour = parseInt(dayConfig.open.split(':')[0], 10);
+                if (dayConfig.close) {
+                    const closeParts = dayConfig.close.split(':');
+                    const closeH = parseInt(closeParts[0], 10);
+                    const closeM = parseInt(closeParts[1], 10);
+                    // Se fecha com minutos (ex: 20:30), estende até as 21h para caber na grade
+                    endHour = closeM > 0 ? closeH + 1 : closeH;
+                }
+            }
+        } else if (state.schedule.open && state.schedule.close) {
+            // Fallback
+            startHour = parseInt(state.schedule.open.split(':')[0], 10);
+            const closeParts = state.schedule.close.split(':');
+            const closeH = parseInt(closeParts[0], 10);
+            const closeM = parseInt(closeParts[1], 10);
+            endHour = closeM > 0 ? closeH + 1 : closeH;
+        }
+    }
+
+    const todaysBookings = state.appointments.filter(b => b.date === currentDateStr);
+
+    // Expande a grade caso algum cliente esteja marcado fora do horário comercial
+    todaysBookings.forEach(appt => {
+        const service = state.services.find(s => s.id === appt.serviceId) || {};
+        const duration = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(service.duration) || 30);
+        const apptEndH = Math.ceil((appt.startTime + duration) / 60);
+        const apptStartH = Math.floor(appt.startTime / 60);
+        
+        if (apptStartH < startHour) startHour = apptStartH;
+        if (apptEndH > endHour) endHour = apptEndH;
+    });
+
+    endHour = Math.max(endHour, startHour + 1);
+
     const pixelsPerMinute = 2.5; 
     const topPadding = 20; 
-    
     const totalHeight = (endHour - startHour + 1) * 60 * pixelsPerMinute + topPadding;
 
     const gridContainer = document.createElement('div');
@@ -209,10 +277,59 @@ function renderGrid(visibleBarbers, currentDateStr) {
         }
     }
 
+    // --- LINHA DO TEMPO ATUAL (FUSO PORTUGAL) ---
+    const lisbonDateStr = getLisbonCurrentDateStr();
+    
+    // A linha só aparece se o dia clicado na agenda for igual ao dia ATUAL em Portugal.
+    if (currentDateStr === lisbonDateStr) {
+        const { h: currentH, m: currentM } = getLisbonCurrentTime();
+        const topPx = (currentH - startHour) * 60 * pixelsPerMinute + (currentM * pixelsPerMinute) + topPadding;
+
+        // z-50 para ficar na frente de absolutamente tudo
+        const timeLine = document.createElement('div');
+        timeLine.id = 'current-time-line-bar';
+        timeLine.className = 'absolute left-0 w-full border-t-[2px] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.8)] z-50 pointer-events-none transition-all duration-1000 ease-linear';
+        timeLine.style.top = `${topPx}px`;
+        timeLine.style.display = (currentH >= startHour && currentH <= endHour) ? 'block' : 'none';
+        linesContent.appendChild(timeLine);
+
+        const timeBadge = document.createElement('div');
+        timeBadge.id = 'current-time-line-badge';
+        timeBadge.className = 'absolute right-0 bg-amber-500 text-black text-[11px] font-bold px-2 py-0.5 rounded-l-md shadow-lg z-50 transform -translate-y-1/2 flex items-center gap-1.5 transition-all duration-1000 ease-linear';
+        timeBadge.style.top = `${topPx}px`;
+        timeBadge.style.display = (currentH >= startHour && currentH <= endHour) ? 'flex' : 'none';
+        timeBadge.innerHTML = `<span class="animate-pulse w-1.5 h-1.5 bg-black rounded-full"></span> <span id="current-time-text">${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}</span>`;
+        timeCol.appendChild(timeBadge);
+
+        if (window.currentTimeInterval) clearInterval(window.currentTimeInterval);
+        
+        window.currentTimeInterval = setInterval(() => {
+            const { h, m } = getLisbonCurrentTime();
+            const bar = document.getElementById('current-time-line-bar');
+            const badge = document.getElementById('current-time-line-badge');
+            const text = document.getElementById('current-time-text');
+            
+            if (bar && badge && text) {
+                // Se for fora do horário comercial definido, esconde a linha para não causar scroll vazio
+                if (h < startHour || h > endHour) {
+                    bar.style.display = 'none';
+                    badge.style.display = 'none';
+                } else {
+                    bar.style.display = 'block';
+                    badge.style.display = 'flex';
+                    const newTop = (h - startHour) * 60 * pixelsPerMinute + (m * pixelsPerMinute) + topPadding;
+                    bar.style.top = `${newTop}px`;
+                    badge.style.top = `${newTop}px`;
+                    text.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                }
+            }
+        }, 30000); 
+    } else {
+        if (window.currentTimeInterval) clearInterval(window.currentTimeInterval);
+    }
+
     linesContainer.appendChild(linesContent);
     gridContainer.appendChild(timeCol);
-
-    const todaysBookings = state.appointments.filter(b => b.date === currentDateStr);
 
     visibleBarbers.forEach(barber => {
         const bCol = document.createElement('div');
@@ -317,7 +434,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
                 const topPx = (startMins * pixelsPerMinute) + topPadding;
                 const heightPx = duration * pixelsPerMinute;
 
-                // --- CÓDIGO NOVO: Linhas e Etiquetas Sempre Visíveis ---
+                // --- Linhas e Etiquetas de Agendamento ---
                 const topLine = document.createElement('div');
                 topLine.className = 'absolute left-0 w-full border-t-[1.5px] border-red-500 z-10 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.6)] opacity-50';
                 topLine.style.top = `${topPx}px`;

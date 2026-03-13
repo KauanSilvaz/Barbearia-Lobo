@@ -14,6 +14,10 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
+// App secundário para criar contas de funcionários sem deslogar o admin atual
+const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
+const secondaryAuth = secondaryApp.auth();
+
 const db = firebase.firestore();
 const auth = firebase.auth();
 const functions = firebase.functions();
@@ -118,10 +122,11 @@ const app = {
             const badge = emp.isBlocked ? `<span class="bg-red-500/20 text-red-500 text-[9px] px-2 py-0.5 rounded-full font-bold ml-2 border border-red-500/20 uppercase">Bloqueado</span>` : '';
             
             const rolesDisplay = Array.isArray(emp.role) ? emp.role.join(', ') : (emp.role || 'Não definida');
+            const empColor = emp.color || '#3f3f46'; // Fallback para usuários antigos
 
             card.innerHTML = `
                 <div class="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                    <img src="${photoUrl}" alt="${emp.name}" class="w-12 h-12 rounded-full object-cover border-2 border-zinc-700 bg-zinc-800 flex-shrink-0">
+                    <img src="${photoUrl}" alt="${emp.name}" class="w-12 h-12 rounded-full object-cover border-[3px] bg-zinc-800 flex-shrink-0" style="border-color: ${empColor};">
                     <div class="truncate pr-2">
                         <h3 class="font-bold text-white text-sm flex items-center flex-wrap gap-1">${emp.name} ${badge}</h3>
                         <p class="text-xs text-zinc-500 truncate">${rolesDisplay} • ${emp.spec || 'Geral'}</p>
@@ -149,6 +154,13 @@ const app = {
 
         // Resetando os novos campos
         if(document.getElementById('emp-blocked')) document.getElementById('emp-blocked').checked = false;
+        
+        if(document.getElementById('emp-color')) {
+            document.getElementById('emp-color').value = '#f59e0b';
+            document.getElementById('emp-img-preview').style.borderColor = '#f59e0b';
+            document.getElementById('emp-img-placeholder').style.borderColor = '#f59e0b';
+        }
+
         if(document.getElementById('emp-work-start')) document.getElementById('emp-work-start').value = '09:00';
         if(document.getElementById('emp-work-end')) document.getElementById('emp-work-end').value = '20:00';
         if(document.getElementById('emp-lunch-start')) document.getElementById('emp-lunch-start').value = '12:00';
@@ -187,9 +199,17 @@ const app = {
                 }
             });
 
-            // Popula os novos campos de horário e bloqueio
+            // Popula os novos campos de horário, cor e bloqueio
             if(document.getElementById('emp-blocked')) document.getElementById('emp-blocked').checked = emp.isBlocked || false;
             
+            const colorInput = document.getElementById('emp-color');
+            const empColor = emp.color || '#f59e0b';
+            if(colorInput) {
+                colorInput.value = empColor;
+                document.getElementById('emp-img-preview').style.borderColor = empColor;
+                document.getElementById('emp-img-placeholder').style.borderColor = empColor;
+            }
+
             if(emp.schedule) {
                 document.getElementById('emp-work-start').value = emp.schedule.workStart || '09:00';
                 document.getElementById('emp-work-end').value = emp.schedule.workEnd || '20:00';
@@ -267,6 +287,9 @@ const app = {
         const photoUrl = photoInput ? photoInput.value : '';
         const passInput = document.getElementById('emp-pass');
         const password = passInput ? passInput.value : '';
+        
+        const colorInput = document.getElementById('emp-color');
+        const empColor = colorInput ? colorInput.value : '#f59e0b';
 
         // Pega os dias selecionados no modal
         const activeEmpDays = Array.from(document.querySelectorAll('#emp-days-container input:checked')).map(i => i.value);
@@ -277,6 +300,7 @@ const app = {
             spec: document.getElementById('emp-spec').value,
             email: document.getElementById('emp-email').value,
             photoUrl: photoUrl,
+            color: empColor,
             isBlocked: document.getElementById('emp-blocked') ? document.getElementById('emp-blocked').checked : false,
             schedule: {
                 days: activeEmpDays,
@@ -299,22 +323,35 @@ const app = {
 
         try {
             if (id) {
+                // Remove a senha antes de atualizar para não subscrever com erro ou guardar limpa
+                delete employeeData.password;
                 await db.collection("employees").doc(id).update(employeeData);
             } else {
                  if (!password || password.length < 6) {
                     alert("A senha é obrigatória para novos usuários e deve ter no mínimo 6 caracteres.");
                     throw new Error("Senha inválida");
                 }
-                employeeData.needsAuthCreation = true;
+                
+                // 1. Cria o utilizador no Firebase Auth usando o App Secundário
+                const userCredential = await secondaryAuth.createUserWithEmailAndPassword(employeeData.email, password);
+                
+                // 2. Faz logout do App Secundário por segurança
+                await secondaryAuth.signOut();
+                
+                // 3. Limpa campos de controle e senhas que não devem ir pro Firestore
+                delete employeeData.password;
+                if (employeeData.needsAuthCreation) delete employeeData.needsAuthCreation;
                 employeeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                await db.collection("employees").add(employeeData);
+                
+                // 4. Salva no Firestore usando o UID do Auth como ID do documento
+                await db.collection("employees").doc(userCredential.user.uid).set(employeeData);
             }
             
             if(passInput) passInput.value = '';
             app.closeEmployeeModal();
             
         } catch (error) {
-            console.error("Erro ao salvar no Firestore:", error);
+            console.error("Erro ao salvar no Firestore/Auth:", error);
             alert(error.message || "Erro ao salvar dados.");
         } finally {
             btn.innerHTML = originalText;

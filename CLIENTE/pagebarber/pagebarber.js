@@ -17,9 +17,7 @@ if (loggedBarberPhoto) {
     document.getElementById('barber-icon').classList.add('hidden');
 }
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 9); // 9h às 21h
-
-// Utils
+// --- UTILS & FUSO HORÁRIO (Lisboa/Portugal) ---
 const getLocalYYYYMMDD = (date) => {
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().split('T')[0];
@@ -37,9 +35,25 @@ const timeToMins = (timeStr) => {
     return h * 60 + m;
 };
 
+const getLisbonDateObj = () => {
+    const lisbonTimeStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Lisbon" });
+    return new Date(lisbonTimeStr);
+};
+
+const getLisbonCurrentDateStr = () => {
+    const now = getLisbonDateObj();
+    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+};
+
+const getLisbonCurrentTime = () => {
+    const now = getLisbonDateObj();
+    return { h: now.getHours(), m: now.getMinutes() };
+};
+
 const app = {
     currentDate: new Date(),
     view: 'agenda',
+    schedule: null, // Horário da barbearia (BD)
     appointments: [], 
     historyData: [],
     users: [],
@@ -53,9 +67,7 @@ const app = {
         app.syncCompanyLogo();
         app.setupPaymentListeners();
         
-        // Garante que o botão do mobile chame a abertura do modal corretamente
         document.getElementById('fab-new').onclick = () => app.openModal();
-        
         lucide.createIcons();
     },
 
@@ -88,9 +100,28 @@ const app = {
     },
 
     setupFirebaseListeners: () => {
+        // Horários globais do BD
+        onSnapshot(doc(db, "settings", "schedule"), (snapshot) => {
+            if (snapshot.exists()) {
+                app.schedule = snapshot.data();
+                app.renderGrid();
+            }
+        });
+
+        // Dados do Barbeiro logado
         onSnapshot(doc(db, "employees", loggedBarberId), (docSnap) => {
             if (docSnap.exists()) {
                 app.currentEmployee = docSnap.data();
+                const barberColor = app.currentEmployee.color || '#f59e0b';
+                
+                // Aplicar cor do barbeiro nos elementos UI
+                document.getElementById('barber-photo').style.borderColor = barberColor;
+                document.getElementById('barber-icon').style.color = barberColor;
+                document.getElementById('barber-icon').style.borderColor = `${barberColor}40`; // 40 = hex alpha opacity
+                document.getElementById('barber-icon').style.backgroundColor = `${barberColor}1A`; 
+                document.getElementById('fab-new').style.backgroundColor = barberColor;
+                document.getElementById('fab-new').style.color = '#000'; // contraste
+                
                 app.renderGrid(); 
             }
         });
@@ -185,6 +216,7 @@ const app = {
         app.renderGrid();
     },
 
+    // --- NOVA RENDERIZAÇÃO ABSOLUTA DA GRADE ---
     renderGrid: () => {
         const emp = app.currentEmployee;
         if (!emp) return; 
@@ -199,7 +231,7 @@ const app = {
 
         if (emp.isBlocked) {
             body.innerHTML = `
-                <div class="h-full w-full bg-red-950/20 flex flex-col items-center justify-center p-6 text-center">
+                <div class="h-full w-full bg-red-950/20 flex flex-col items-center justify-center p-6 text-center mt-10 rounded-xl border border-red-900/30">
                     <div class="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-4 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                         <i data-lucide="lock" class="w-8 h-8"></i>
                     </div>
@@ -211,85 +243,318 @@ const app = {
             return;
         }
 
-        const targetDayStr = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][app.currentDate.getDay()];
-        const worksTargetDate = emp.schedule?.days?.includes(targetDayStr) ?? true;
-        const workStartMins = timeToMins(emp.schedule?.workStart || '09:00');
-        const workEndMins = timeToMins(emp.schedule?.workEnd || '20:00');
-        const lunchStartMins = timeToMins(emp.schedule?.lunchStart || '12:00');
-        const lunchEndMins = timeToMins(emp.schedule?.lunchEnd || '13:00');
-        const isPastDate = dateKey < todayStr; 
+        const barberColor = emp.color || '#f59e0b';
+        
+        // CORREÇÃO DOS DIAS COM PRIMEIRA LETRA MAIÚSCULA
+        const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const dayOfWeek = daysMap[app.currentDate.getDay()];
 
+        // 1. Calcular startHour e endHour dinamicamente do BD global
+        let startHour = 8; 
+        let endHour = 22; // Default
+
+        if (app.schedule) {
+            if (app.schedule.dailySchedules && app.schedule.dailySchedules[dayOfWeek]) {
+                const dayConfig = app.schedule.dailySchedules[dayOfWeek];
+                if (dayConfig.active) {
+                    if (dayConfig.open) startHour = parseInt(dayConfig.open.split(':')[0], 10);
+                    if (dayConfig.close) {
+                        const closeParts = dayConfig.close.split(':');
+                        const closeH = parseInt(closeParts[0], 10);
+                        const closeM = parseInt(closeParts[1], 10);
+                        endHour = closeM > 0 ? closeH + 1 : closeH;
+                    }
+                }
+            } else if (app.schedule.open && app.schedule.close) {
+                startHour = parseInt(app.schedule.open.split(':')[0], 10);
+                const closeParts = app.schedule.close.split(':');
+                const closeH = parseInt(closeParts[0], 10);
+                const closeM = parseInt(closeParts[1], 10);
+                endHour = closeM > 0 ? closeH + 1 : closeH;
+            }
+        }
+
+        const todaysBookings = app.appointments.filter(b => b.date === dateKey);
+
+        // Expandir a grade se houver agendamentos fora do horário normal
+        todaysBookings.forEach(appt => {
+            const service = app.services.find(s => s.id === appt.serviceId) || {};
+            const duration = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(service.duration) || 30);
+            const apptEndH = Math.ceil((appt.startTime + duration) / 60);
+            const apptStartH = Math.floor(appt.startTime / 60);
+            
+            if (apptStartH < startHour) startHour = apptStartH;
+            if (apptEndH > endHour) endHour = apptEndH;
+        });
+
+        endHour = Math.max(endHour, startHour + 1);
+
+        const pixelsPerMinute = 2.5; 
+        const topPadding = 20; 
+        const totalHeight = (endHour - startHour + 1) * 60 * pixelsPerMinute + topPadding;
+
+        // Cabeçalho da grade
         header.innerHTML = `
-            <div class="w-16 border-r border-zinc-800/50 bg-zinc-900/50"></div>
-            <div class="flex-1 py-3 text-center">
-                <div class="text-[10px] uppercase font-bold text-amber-500">${app.currentDate.toLocaleDateString('pt-PT', { weekday: 'long' })}</div>
+            <div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/50 sticky left-0 z-20"></div>
+            <div class="flex-1 w-full min-w-[200px] p-3 text-center bg-zinc-900/40">
+                <div class="text-[10px] uppercase font-bold" style="color: ${barberColor}">${app.currentDate.toLocaleDateString('pt-PT', { weekday: 'long' })}</div>
                 <div class="text-xl font-bold text-white">${app.currentDate.getDate()}</div>
             </div>`;
 
+        // Container principal da grade
         body.innerHTML = '';
-        HOURS.forEach(hour => {
-            const hourMins = hour * 60;
-            const apptsInSlot = app.appointments.filter(a => a.date === dateKey && Math.floor(a.startTime / 60) === hour);
-            apptsInSlot.sort((a, b) => a.startTime - b.startTime);
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'flex relative w-full min-w-max';
+        gridContainer.style.height = `${totalHeight}px`;
 
-            const row = document.createElement('div');
-            row.className = 'flex min-h-[80px] border-b border-zinc-800/50 relative';
-            
-            let slotsHTML = '';
-            const isWorkingSlot = worksTargetDate && (hourMins >= workStartMins && hourMins < workEndMins) && !(hourMins >= lunchStartMins && hourMins < lunchEndMins);
-            
-            if (apptsInSlot.length > 0) {
-                apptsInSlot.forEach(appt => {
-                    const statusClass = appt.status === 'completed' 
-                        ? 'border-zinc-500 bg-zinc-900 opacity-60 grayscale' 
-                        : 'border-amber-500 bg-zinc-800 hover:bg-zinc-700';
-                        
-                    const clientName = appt.clientName || 'Cliente';
-                    const serviceObj = app.services.find(s => s.id === appt.serviceId);
-                    const serviceName = serviceObj?.name || appt.serviceName || 'Serviço';
-                    const durationMins = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(serviceObj?.duration) || 30);
-                    const endTimeDisplay = formatMinutesToTime(appt.startTime + durationMins);
+        // Coluna de tempo à esquerda
+        const timeCol = document.createElement('div');
+        timeCol.className = 'w-16 flex-shrink-0 border-r border-zinc-800/50 relative bg-zinc-950/80 z-20 backdrop-blur-sm sticky left-0';
 
-                    slotsHTML += `
-                        <div class="w-full mb-1 rounded-lg border-l-4 p-2 shadow-sm ${statusClass} cursor-pointer transition-colors" onclick="app.openModal('${appt.id}')">
-                            <div class="flex justify-between items-start">
-                                <div class="flex items-center truncate">
-                                    <p class="text-sm font-bold text-white truncate ${appt.status === 'completed' ? 'line-through text-zinc-400' : ''}">${clientName}</p>
-                                    ${appt.notes ? `<i data-lucide="message-square-text" class="w-3.5 h-3.5 text-sky-400 ml-1.5 flex-shrink-0"></i>` : ''}
-                                </div>
-                                <span class="text-[10px] text-zinc-400 font-mono bg-zinc-950/50 px-1.5 py-0.5 rounded border border-zinc-800/50 flex-shrink-0 ml-2">
-                                    ${formatMinutesToTime(appt.startTime)} - ${endTimeDisplay}
-                                </span>
-                            </div>
-                            <p class="text-[10px] text-zinc-400 flex items-center gap-1 mt-1">
-                                <i data-lucide="scissors" class="w-3 h-3"></i> ${serviceName}
-                            </p>
-                        </div>`;
-                });
-            } else {
-                if (isPastDate) {
-                    slotsHTML = `<div class="w-full h-full flex items-center justify-center opacity-30 cursor-not-allowed select-none">
-                        <div class="text-[10px] text-zinc-600 font-medium">PASSADO</div>
-                    </div>`;
-                } else if (!isWorkingSlot) {
-                    slotsHTML = `<div class="w-full h-full flex items-center justify-center opacity-30 cursor-not-allowed select-none bg-red-950/10 rounded-lg">
-                        <div class="text-[10px] text-red-900/50 font-bold uppercase">Folga/Pausa</div>
-                    </div>`;
+        // Linhas horizontais e marcações
+        const linesContainer = document.createElement('div');
+        linesContainer.className = 'absolute inset-0 pointer-events-none w-full flex';
+        linesContainer.innerHTML = `<div class="w-16 flex-shrink-0 sticky left-0"></div>`;
+        const linesContent = document.createElement('div');
+        linesContent.className = 'flex-1 relative w-full';
+
+        for (let h = startHour; h <= endHour; h++) {
+            const maxMinutes = (h === endHour) ? 0 : 55;
+
+            for (let m = 0; m <= maxMinutes; m += 5) {
+                const topPx = (h - startHour) * 60 * pixelsPerMinute + (m * pixelsPerMinute) + topPadding;
+                
+                const timeLabel = document.createElement('div');
+                timeLabel.style.top = `${topPx}px`;
+
+                const hLine = document.createElement('div');
+                hLine.style.top = `${topPx}px`;
+
+                if (m === 0) {
+                    timeLabel.className = 'absolute w-full text-center text-[11px] text-zinc-300 font-bold -mt-2 z-10';
+                    timeLabel.textContent = `${h.toString().padStart(2, '0')}:00`;
+                    hLine.className = 'absolute w-full border-t border-zinc-700/60 z-10';
+                } else if (m === 30) {
+                    timeLabel.className = 'absolute w-full text-center text-[10px] text-zinc-500 font-medium -mt-1.5';
+                    timeLabel.textContent = `${h.toString().padStart(2, '0')}:30`;
+                    hLine.className = 'absolute w-full border-t border-zinc-800/50 border-dashed';
                 } else {
-                    slotsHTML = `
-                        <div class="w-full h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer bg-zinc-800/20 rounded-lg border border-dashed border-zinc-700 hover:border-amber-500/50" onclick="app.openModal(null, ${hourMins})">
-                            <div class="text-[10px] text-amber-500 font-medium">+ Adicionar</div>
-                        </div>`;
+                    timeLabel.className = 'absolute w-full text-center text-[8px] text-zinc-700/70 font-medium -mt-1';
+                    timeLabel.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                    hLine.className = 'absolute w-full border-t border-zinc-800/20 border-dotted';
                 }
-            }
 
-            row.innerHTML = `
-                <div class="w-16 border-r border-zinc-800/50 flex justify-center pt-3 text-[10px] text-zinc-500 font-mono">${hour}:00</div>
-                <div class="flex-1 p-1.5 flex flex-col justify-center">${slotsHTML}</div>`;
-            
-            body.appendChild(row);
-        });
+                timeCol.appendChild(timeLabel);
+                linesContent.appendChild(hLine);
+            }
+        }
+
+        // --- LINHA DO TEMPO ATUAL (LARANJA/FUSO LISBOA) ---
+        const lisbonDateStr = getLisbonCurrentDateStr();
         
+        if (dateKey === lisbonDateStr) {
+            const { h: currentH, m: currentM } = getLisbonCurrentTime();
+            const topPx = (currentH - startHour) * 60 * pixelsPerMinute + (currentM * pixelsPerMinute) + topPadding;
+
+            const timeLine = document.createElement('div');
+            timeLine.id = 'current-time-line-bar';
+            timeLine.className = 'absolute left-0 w-full border-t-[2px] shadow-[0_0_12px_rgba(245,158,11,0.8)] z-50 pointer-events-none transition-all duration-1000 ease-linear';
+            timeLine.style.top = `${topPx}px`;
+            timeLine.style.borderColor = barberColor; // Linha da cor do barbeiro!
+            timeLine.style.display = (currentH >= startHour && currentH <= endHour) ? 'block' : 'none';
+            linesContent.appendChild(timeLine);
+
+            const timeBadge = document.createElement('div');
+            timeBadge.id = 'current-time-line-badge';
+            timeBadge.className = 'absolute right-0 text-black text-[11px] font-bold px-2 py-0.5 rounded-l-md shadow-lg z-50 transform -translate-y-1/2 flex items-center gap-1.5 transition-all duration-1000 ease-linear';
+            timeBadge.style.top = `${topPx}px`;
+            timeBadge.style.backgroundColor = barberColor; // Etiqueta da cor do barbeiro!
+            timeBadge.style.display = (currentH >= startHour && currentH <= endHour) ? 'flex' : 'none';
+            timeBadge.innerHTML = `<span class="animate-pulse w-1.5 h-1.5 bg-black rounded-full"></span> <span id="current-time-text">${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}</span>`;
+            timeCol.appendChild(timeBadge);
+
+            if (window.currentTimeInterval) clearInterval(window.currentTimeInterval);
+            
+            window.currentTimeInterval = setInterval(() => {
+                const { h, m } = getLisbonCurrentTime();
+                const bar = document.getElementById('current-time-line-bar');
+                const badge = document.getElementById('current-time-line-badge');
+                const text = document.getElementById('current-time-text');
+                
+                if (bar && badge && text) {
+                    if (h < startHour || h > endHour) {
+                        bar.style.display = 'none';
+                        badge.style.display = 'none';
+                    } else {
+                        bar.style.display = 'block';
+                        badge.style.display = 'flex';
+                        const newTop = (h - startHour) * 60 * pixelsPerMinute + (m * pixelsPerMinute) + topPadding;
+                        bar.style.top = `${newTop}px`;
+                        badge.style.top = `${newTop}px`;
+                        text.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                    }
+                }
+            }, 30000); 
+        } else {
+            if (window.currentTimeInterval) clearInterval(window.currentTimeInterval);
+        }
+
+        linesContainer.appendChild(linesContent);
+        gridContainer.appendChild(timeCol);
+
+        // Coluna clicável para os agendamentos do Barbeiro
+        const bCol = document.createElement('div');
+        bCol.className = 'flex-1 relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 w-full min-w-[200px]';
+
+        bCol.onclick = (e) => {
+            if(e.target !== bCol) return;
+            const rect = bCol.getBoundingClientRect();
+            const y = e.clientY - rect.top - topPadding;
+            let clickedMinuteOfDay = (y / pixelsPerMinute) + (startHour * 60);
+            clickedMinuteOfDay = Math.max(startHour * 60, Math.floor(clickedMinuteOfDay / 5) * 5);
+            app.openModal(null, clickedMinuteOfDay);
+        };
+
+        // Algoritmo de sobreposição e renderização dos cards (igual ao Home)
+        const sortedBookings = [...todaysBookings].sort((a, b) => a.startTime - b.startTime);
+        const groups = [];
+        let currentGroup = [];
+        let groupEnd = 0;
+
+        sortedBookings.forEach(appt => {
+            const service = app.services.find(s => s.id === appt.serviceId) || {};
+            const duration = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(service.duration) || 30);
+            const endTime = appt.startTime + duration;
+
+            if (currentGroup.length > 0 && appt.startTime >= groupEnd) {
+                groups.push(currentGroup);
+                currentGroup = [];
+            }
+            currentGroup.push({ appt, service, duration, endTime });
+            groupEnd = Math.max(groupEnd, endTime);
+        });
+        if (currentGroup.length > 0) groups.push(currentGroup);
+
+        groups.forEach(group => {
+            const columns = [];
+            group.forEach(item => {
+                let placed = false;
+                for (let i = 0; i < columns.length; i++) {
+                    const lastInCol = columns[i][columns[i].length - 1];
+                    if (lastInCol.endTime <= item.appt.startTime) {
+                        columns[i].push(item);
+                        item.colIndex = i;
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    item.colIndex = columns.length;
+                    columns.push([item]);
+                }
+            });
+
+            const numCols = columns.length;
+
+            group.forEach(item => {
+                const { appt, service, duration } = item;
+                const clientUser = app.users.find(u => u.id === appt.userId);
+                const displayName = clientUser ? (clientUser.name || 'Usuário App') : (appt.clientName || 'Cliente Avulso');
+
+                const startMins = appt.startTime - (startHour * 60);
+                const topPx = (startMins * pixelsPerMinute) + topPadding;
+                const heightPx = duration * pixelsPerMinute;
+
+                // --- Linhas e Etiquetas de Agendamento (Vermelhas) ---
+                const topLine = document.createElement('div');
+                topLine.className = 'absolute left-0 w-full border-t-[1.5px] border-red-500 z-10 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.6)] opacity-50';
+                topLine.style.top = `${topPx}px`;
+
+                const bottomLine = document.createElement('div');
+                bottomLine.className = 'absolute left-0 w-full border-t-[1.5px] border-red-500 z-10 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.6)] opacity-50';
+                bottomLine.style.top = `${topPx + heightPx}px`;
+
+                const topBadge = document.createElement('div');
+                topBadge.className = 'absolute right-0 bg-red-600/90 text-white text-[11px] font-bold px-2 py-0.5 rounded-l-md shadow-lg z-20 transform -translate-y-1/2';
+                topBadge.style.top = `${topPx}px`;
+                topBadge.textContent = formatMinutesToTime(appt.startTime);
+
+                const bottomBadge = document.createElement('div');
+                bottomBadge.className = 'absolute right-0 bg-red-600/90 text-white text-[11px] font-bold px-2 py-0.5 rounded-l-md shadow-lg z-20 transform -translate-y-1/2';
+                bottomBadge.style.top = `${topPx + heightPx}px`;
+                bottomBadge.textContent = formatMinutesToTime(appt.startTime + duration);
+
+                linesContent.appendChild(topLine);
+                linesContent.appendChild(bottomLine);
+                timeCol.appendChild(topBadge);
+                timeCol.appendChild(bottomBadge);
+
+                // Aplicação da cor personalizada do Barbeiro no card
+                let colorClasses = "bg-zinc-900 border-zinc-800";
+                
+                let opacityClass = '';
+                let textDecorationClass = 'text-zinc-100';
+                let dotColorClass = '';
+                
+                if (appt.status === 'completed') {
+                    opacityClass = 'opacity-40 grayscale hover:grayscale-0 border-l-zinc-400 bg-zinc-800';
+                    textDecorationClass = 'line-through text-zinc-500';
+                    dotColorClass = 'background-color: #a1a1aa'; // zinc-400
+                } else {
+                    opacityClass = 'border-l-[4px]';
+                    dotColorClass = `background-color: ${barberColor}`; // Usa a cor do barbeiro
+                }
+
+                const widthPct = 100 / numCols;
+                const leftPct = item.colIndex * widthPct;
+
+                const card = document.createElement('div');
+                card.className = `absolute rounded-lg p-2.5 text-xs border-t border-r border-b backdrop-blur-md shadow-lg transition-all overflow-hidden flex flex-col justify-between cursor-pointer hover:z-30 z-20 ${colorClasses} ${opacityClass}`;
+                
+                card.style.top = `${topPx}px`;
+                card.style.height = `${Math.max(heightPx, 45)}px`;
+                card.style.left = `calc(${leftPct}% + 4px)`;
+                card.style.width = `calc(${widthPct}% - 8px)`;
+                if(appt.status !== 'completed') card.style.borderLeftColor = barberColor;
+
+                card.innerHTML = `
+                    <div class="flex flex-col gap-1 h-full">
+                        <div class="flex justify-between items-start gap-1">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <div class="w-2 h-2 rounded-full flex-shrink-0 shadow-sm" style="${dotColorClass}"></div>
+                                <span class="font-bold truncate text-[12px] leading-tight ${textDecorationClass}">${displayName}</span>
+                                ${appt.notes ? `<i data-lucide="message-square-text" class="w-3 h-3 text-sky-400 ml-1 flex-shrink-0"></i>` : ''}
+                            </div>
+                            ${appt.status === 'completed' 
+                                ? `<i data-lucide="check-check" class="w-4 h-4 flex-shrink-0 text-emerald-500"></i>` 
+                                : ``
+                            }
+                        </div>
+                        
+                        <div class="opacity-90 truncate text-[10px] leading-tight flex items-center gap-1 text-zinc-400">
+                            <i data-lucide="scissors" class="w-3 h-3" style="color: ${appt.status === 'completed' ? '#a1a1aa' : barberColor}"></i>
+                            ${service.name || appt.serviceName || 'Serviço'}
+                        </div>
+
+                        <div class="mt-auto font-mono text-[10px] bg-zinc-950/50 rounded px-1.5 py-0.5 inline-flex items-center gap-1 self-start text-zinc-400 border border-zinc-800/50">
+                            <i data-lucide="clock" class="w-3 h-3 opacity-70"></i>
+                            ${formatMinutesToTime(appt.startTime)} - ${formatMinutesToTime(appt.endTime || (appt.startTime + duration))}
+                        </div>
+                    </div>
+                `;
+
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    app.openModal(appt.id);
+                };
+
+                bCol.appendChild(card);
+            });
+        });
+
+        gridContainer.appendChild(bCol);
+        body.appendChild(linesContainer);
+        body.appendChild(gridContainer);
         if (window.lucide) lucide.createIcons();
     },
 
@@ -417,6 +682,11 @@ const app = {
                 saveBtn.innerText = 'Salvar Agendamento';
             }
         }
+
+        // Aplica a cor do barbeiro no botão salvar do modal
+        const barberColor = app.currentEmployee?.color || '#f59e0b';
+        saveBtn.style.backgroundColor = barberColor;
+        saveBtn.style.color = '#000';
 
         document.getElementById('appointment-modal').classList.remove('hidden');
         if (window.lucide) lucide.createIcons();

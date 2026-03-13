@@ -1,4 +1,4 @@
-/* financeiro.js - COMPLETO COM PDV (CAIXA), REAL-TIME SYNC E EXCLUSÃO */
+/* financeiro.js - COMPLETO COM PDV (CAIXA), REAL-TIME SYNC, EXCLUSÃO E CORES NO GRÁFICO */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, addDoc, query, orderBy, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -185,13 +185,20 @@ const financeApp = {
             if (botaoAtivo) botaoAtivo.click();
         });
 
-        // 2. Sincroniza dados auxiliares para o PDV
+        // 2. Sincroniza dados auxiliares para o PDV e para as cores do gráfico
         onSnapshot(collection(db, "services"), (snap) => {
             posState.services = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         });
+        
         onSnapshot(collection(db, "employees"), (snap) => {
             posState.barbers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Atualiza os gráficos para garantir que as cores sejam aplicadas 
+            // logo após os dados dos barbeiros carregarem
+            if (dadosExibidos.length > 0) {
+                financeApp.atualizarGraficos(dadosExibidos);
+            }
         });
+        
         onSnapshot(collection(db, "users"), (snap) => {
             posState.users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         });
@@ -365,7 +372,7 @@ const financeApp = {
         const ctxBarber = document.getElementById('barberRevenueChart').getContext('2d');
         graficos.barberChart = new Chart(ctxBarber, {
             type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Faturamento (€)', data: [], backgroundColor: '#10b981', borderRadius: 4 }] },
+            data: { labels: [], datasets: [{ label: 'Faturamento (€)', data: [], backgroundColor: [], borderRadius: 4 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#27272a' } } } }
         });
 
@@ -386,8 +393,18 @@ const financeApp = {
             mixServicos[d.servico] = (mixServicos[d.servico] || 0) + 1;
         });
 
-        graficos.barberChart.data.labels = Object.keys(faturamentoBarbeiro);
-        graficos.barberChart.data.datasets[0].data = Object.values(faturamentoBarbeiro);
+        const labelsBarbeiros = Object.keys(faturamentoBarbeiro);
+        const dataBarbeiros = Object.values(faturamentoBarbeiro);
+        
+        // Mapeia a cor de cada barbeiro baseada nos dados carregados do banco (posState.barbers)
+        const coresBarbeiros = labelsBarbeiros.map(nomeBarbeiro => {
+            const barbeiro = posState.barbers.find(b => b.name === nomeBarbeiro);
+            return (barbeiro && barbeiro.color) ? barbeiro.color : '#10b981'; // #10b981 é o verde esmeralda padrão
+        });
+
+        graficos.barberChart.data.labels = labelsBarbeiros;
+        graficos.barberChart.data.datasets[0].data = dataBarbeiros;
+        graficos.barberChart.data.datasets[0].backgroundColor = coresBarbeiros; // Aplica a lista de cores dinâmicas
         graficos.barberChart.update();
 
         graficos.servicesChart.data.labels = Object.keys(mixServicos);

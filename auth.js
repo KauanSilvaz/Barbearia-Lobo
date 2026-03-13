@@ -75,7 +75,8 @@ loginForm.addEventListener('submit', async (e) => {
             }
 
             // 4. Verifica se o array 'role' existe e se inclui 'Gerente'
-            if (userData.role && userData.role.includes('Gerente')) {
+            // Verifica se o array 'role' existe e inclui 'Gerente' OU 'Recepcionista'
+            if (userData.role && (userData.role.includes('Gerente') || userData.role.includes('Recepcionista'))) {
                 // Sucesso: É gerente e não está bloqueado. Redireciona!
                 window.location.href = "./CLIENTE/home/home.html"; 
             } else {
