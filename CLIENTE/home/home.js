@@ -19,6 +19,7 @@ const els = {
     gridBody: document.getElementById('grid-body'),
     barberFilter: document.getElementById('barber-filter'),
     currentMonthDisplay: document.getElementById('current-month-display'),
+    calendarPicker: document.getElementById('calendar-picker'),
     modal: document.getElementById('appointment-modal'),
     form: document.getElementById('appointment-form'),
     formId: document.getElementById('form-id'),
@@ -557,6 +558,7 @@ function renderGrid(visibleBarbers, currentDateStr) {
 function renderApp() {
     const currentDateStr = getLocalYYYYMMDD(state.currentDate);
     els.currentMonthDisplay.textContent = state.currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    els.calendarPicker.value = currentDateStr;
     els.formDate.value = currentDateStr;
 
     const visibleBarbers = state.selectedBarber === 'all' 
@@ -634,6 +636,14 @@ document.getElementById('btn-new-appt').onclick = () => openModal();
 document.getElementById('btn-next-days').onclick = () => { state.currentDate.setDate(state.currentDate.getDate() + 1); renderApp(); };
 document.getElementById('btn-prev-days').onclick = () => { state.currentDate.setDate(state.currentDate.getDate() - 1); renderApp(); };
 document.getElementById('btn-today').onclick = () => { state.currentDate = new Date(); renderApp(); };
+
+els.calendarPicker.addEventListener('change', (e) => {
+    if (e.target.value) {
+        const [year, month, day] = e.target.value.split('-');
+        state.currentDate = new Date(year, month - 1, day);
+        renderApp();
+    }
+});
 
 els.btnToggleClient.onclick = () => {
     isCreatingNewClient = !isCreatingNewClient;

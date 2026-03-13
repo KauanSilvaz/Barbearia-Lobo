@@ -60,9 +60,10 @@
                 <button id="btn-prev-days" class="p-2.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
                     <i data-lucide="chevron-left" class="w-5 h-5"></i>
                 </button>
-                <div class="flex items-center justify-center gap-2 px-2 cursor-pointer flex-1 md:flex-none" id="btn-current-month">
-                    <i data-lucide="calendar" class="w-4 h-4 text-amber-500"></i>
-                    <span id="current-month-display" class="font-semibold text-sm whitespace-nowrap">Mês 202X</span>
+                <div class="flex items-center justify-center gap-2 px-2 cursor-pointer flex-1 md:flex-none relative" id="btn-current-month">
+                    <input type="date" id="calendar-picker" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                    <i data-lucide="calendar" class="w-4 h-4 text-amber-500 pointer-events-none z-0"></i>
+                    <span id="current-month-display" class="font-semibold text-sm whitespace-nowrap pointer-events-none z-0">Mês 202X</span>
                 </div>
                 <button id="btn-next-days" class="p-2.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
                     <i data-lucide="chevron-right" class="w-5 h-5"></i>
