@@ -155,8 +155,12 @@ function syncCompanyLogo() {
 }
 
 // --- RENDERIZAÇÃO ---
+// --- CONSTANTE DE LARGURA UNIFICADA ---
+const COL_CLASSES = "w-[85vw] sm:w-[300px] md:w-auto md:flex-1 md:min-w-[250px] flex-none shrink-0 border-r border-zinc-800/50 snap-col";
+
+// --- RENDERIZAÇÃO ---
 function renderHeader(visibleBarbers) {
-    els.gridHeader.innerHTML = '<div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/50 sticky left-0 z-20"></div>';
+    els.gridHeader.innerHTML = '<div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/80 sticky left-0 z-30 shadow-[4px_0_12px_rgba(0,0,0,0.3)]"></div>';
     
     visibleBarbers.forEach(barber => {
         const avatarUrl = barber.photoUrl && barber.photoUrl.trim() !== '' 
@@ -166,7 +170,7 @@ function renderHeader(visibleBarbers) {
         const barberColor = barber.color || '#f59e0b';
 
         const th = document.createElement('div');
-        th.className = 'w-[calc(100vw-4rem)] md:flex-1 md:w-auto md:min-w-[200px] flex-none p-3 text-center border-r border-zinc-800/50 text-zinc-200 font-medium text-sm bg-zinc-900/40 snap-col shrink-0';
+        th.className = `${COL_CLASSES} p-3 text-center text-zinc-200 font-medium text-sm bg-zinc-900/40`;
         th.innerHTML = `
             <div class="flex flex-col items-center justify-center gap-2">
                 <div class="relative">
@@ -183,14 +187,12 @@ function renderHeader(visibleBarbers) {
 function renderGrid(visibleBarbers, currentDateStr) {
     els.gridBody.innerHTML = '';
     
-    // CORREÇÃO: Dias com a primeira letra maiúscula para casar com o banco do config.js!
     const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const dayOfWeek = daysMap[state.currentDate.getDay()];
 
     let startHour = 8; 
-    let endHour = 22; // Default
+    let endHour = 22; 
 
-    // Puxa o horário da EMPRESA dinâmico das configurações do Firebase
     if (state.schedule) {
         if (state.schedule.dailySchedules && state.schedule.dailySchedules[dayOfWeek]) {
             const dayConfig = state.schedule.dailySchedules[dayOfWeek];
@@ -200,12 +202,10 @@ function renderGrid(visibleBarbers, currentDateStr) {
                     const closeParts = dayConfig.close.split(':');
                     const closeH = parseInt(closeParts[0], 10);
                     const closeM = parseInt(closeParts[1], 10);
-                    // Se fecha com minutos (ex: 20:30), estende até as 21h para caber na grade
                     endHour = closeM > 0 ? closeH + 1 : closeH;
                 }
             }
         } else if (state.schedule.open && state.schedule.close) {
-            // Fallback
             startHour = parseInt(state.schedule.open.split(':')[0], 10);
             const closeParts = state.schedule.close.split(':');
             const closeH = parseInt(closeParts[0], 10);
@@ -216,7 +216,6 @@ function renderGrid(visibleBarbers, currentDateStr) {
 
     const todaysBookings = state.appointments.filter(b => b.date === currentDateStr);
 
-    // Expande a grade caso algum cliente esteja marcado fora do horário comercial
     todaysBookings.forEach(appt => {
         const service = state.services.find(s => s.id === appt.serviceId) || {};
         const duration = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(service.duration) || 30);
@@ -234,17 +233,16 @@ function renderGrid(visibleBarbers, currentDateStr) {
     const totalHeight = (endHour - startHour + 1) * 60 * pixelsPerMinute + topPadding;
 
     const gridContainer = document.createElement('div');
-    gridContainer.className = 'flex relative min-w-max';
+    gridContainer.className = 'flex relative min-w-max w-full';
     gridContainer.style.height = `${totalHeight}px`;
 
+    // Time Col (fixado à esquerda com sobra)
     const timeCol = document.createElement('div');
-    timeCol.className = 'w-16 flex-shrink-0 border-r border-zinc-800/50 relative bg-zinc-950/80 z-20 backdrop-blur-sm sticky left-0';
+    timeCol.className = 'w-16 flex-shrink-0 border-r border-zinc-800/50 relative bg-zinc-950 z-30 sticky left-0 shadow-[4px_0_12px_rgba(0,0,0,0.5)]';
 
+    // Lines Container (começa depois da Time Col, resolvendo o bug de entrar no número)
     const linesContainer = document.createElement('div');
-    linesContainer.className = 'absolute inset-0 pointer-events-none w-full min-w-max flex';
-    linesContainer.innerHTML = `<div class="w-16 flex-shrink-0 sticky left-0"></div>`;
-    const linesContent = document.createElement('div');
-    linesContent.className = 'flex-1 relative';
+    linesContainer.className = 'absolute left-16 right-0 top-0 bottom-0 pointer-events-none z-0';
 
     for (let h = startHour; h <= endHour; h++) {
         const maxMinutes = (h === endHour) ? 0 : 55;
@@ -252,46 +250,46 @@ function renderGrid(visibleBarbers, currentDateStr) {
         for (let m = 0; m <= maxMinutes; m += 5) {
             const topPx = (h - startHour) * 60 * pixelsPerMinute + (m * pixelsPerMinute) + topPadding;
             
-            const timeLabel = document.createElement('div');
-            timeLabel.style.top = `${topPx}px`;
-
             const hLine = document.createElement('div');
             hLine.style.top = `${topPx}px`;
+            hLine.className = 'absolute left-0 right-0 border-t';
 
             if (m === 0) {
-                timeLabel.className = 'absolute w-full text-center text-[11px] text-zinc-300 font-bold -mt-2 z-10';
+                const timeLabel = document.createElement('div');
+                timeLabel.style.top = `${topPx}px`;
+                timeLabel.className = 'absolute w-full text-center text-[11px] text-zinc-300 font-bold -mt-2 z-10 bg-zinc-950';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:00`;
-                hLine.className = 'absolute w-full border-t border-zinc-700/60 z-10';
+                timeCol.appendChild(timeLabel);
+
+                hLine.classList.add('border-zinc-700/60', 'z-10');
             } else if (m === 30) {
-                timeLabel.className = 'absolute w-full text-center text-[10px] text-zinc-500 font-medium -mt-1.5';
+                const timeLabel = document.createElement('div');
+                timeLabel.style.top = `${topPx}px`;
+                timeLabel.className = 'absolute w-full text-center text-[10px] text-zinc-500 font-medium -mt-1.5 bg-zinc-950';
                 timeLabel.textContent = `${h.toString().padStart(2, '0')}:30`;
-                hLine.className = 'absolute w-full border-t border-zinc-800/50 border-dashed';
+                timeCol.appendChild(timeLabel);
+
+                hLine.classList.add('border-zinc-800/50', 'border-dashed');
             } else {
-                timeLabel.className = 'absolute w-full text-center text-[8px] text-zinc-700/70 font-medium -mt-1';
-                timeLabel.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                hLine.className = 'absolute w-full border-t border-zinc-800/20 border-dotted';
+                hLine.classList.add('border-zinc-800/20', 'border-dotted');
             }
 
-            timeCol.appendChild(timeLabel);
-            linesContent.appendChild(hLine);
+            linesContainer.appendChild(hLine);
         }
     }
 
-    // --- LINHA DO TEMPO ATUAL (FUSO PORTUGAL) ---
     const lisbonDateStr = getLisbonCurrentDateStr();
     
-    // A linha só aparece se o dia clicado na agenda for igual ao dia ATUAL em Portugal.
     if (currentDateStr === lisbonDateStr) {
         const { h: currentH, m: currentM } = getLisbonCurrentTime();
         const topPx = (currentH - startHour) * 60 * pixelsPerMinute + (currentM * pixelsPerMinute) + topPadding;
 
-        // z-50 para ficar na frente de absolutamente tudo
         const timeLine = document.createElement('div');
         timeLine.id = 'current-time-line-bar';
-        timeLine.className = 'absolute left-0 w-full border-t-[2px] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.8)] z-50 pointer-events-none transition-all duration-1000 ease-linear';
+        timeLine.className = 'absolute left-0 right-0 border-t-[2px] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.8)] z-50 pointer-events-none transition-all duration-1000 ease-linear';
         timeLine.style.top = `${topPx}px`;
         timeLine.style.display = (currentH >= startHour && currentH <= endHour) ? 'block' : 'none';
-        linesContent.appendChild(timeLine);
+        linesContainer.appendChild(timeLine);
 
         const timeBadge = document.createElement('div');
         timeBadge.id = 'current-time-line-badge';
@@ -310,7 +308,6 @@ function renderGrid(visibleBarbers, currentDateStr) {
             const text = document.getElementById('current-time-text');
             
             if (bar && badge && text) {
-                // Se for fora do horário comercial definido, esconde a linha para não causar scroll vazio
                 if (h < startHour || h > endHour) {
                     bar.style.display = 'none';
                     badge.style.display = 'none';
@@ -328,12 +325,12 @@ function renderGrid(visibleBarbers, currentDateStr) {
         if (window.currentTimeInterval) clearInterval(window.currentTimeInterval);
     }
 
-    linesContainer.appendChild(linesContent);
+    gridContainer.appendChild(linesContainer);
     gridContainer.appendChild(timeCol);
 
     visibleBarbers.forEach(barber => {
         const bCol = document.createElement('div');
-        bCol.className = 'w-[calc(100vw-4rem)] md:flex-1 md:w-auto md:min-w-[200px] flex-none border-r border-zinc-800/50 relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 group snap-col shrink-0';
+        bCol.className = `${COL_CLASSES} relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 group`;
         
         bCol.addEventListener('dragover', (e) => {
             e.preventDefault(); 
@@ -434,7 +431,6 @@ function renderGrid(visibleBarbers, currentDateStr) {
                 const topPx = (startMins * pixelsPerMinute) + topPadding;
                 const heightPx = duration * pixelsPerMinute;
 
-                // --- Linhas e Etiquetas de Agendamento ---
                 const topLine = document.createElement('div');
                 topLine.className = 'absolute left-0 w-full border-t-[1.5px] border-red-500 z-10 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.6)] opacity-50';
                 topLine.style.top = `${topPx}px`;
@@ -453,8 +449,9 @@ function renderGrid(visibleBarbers, currentDateStr) {
                 bottomBadge.style.top = `${topPx + heightPx}px`;
                 bottomBadge.textContent = formatMinutesToTime(appt.startTime + duration);
 
-                linesContent.appendChild(topLine);
-                linesContent.appendChild(bottomLine);
+                // Vinculando linhas vermelhas diretamente à grade de marcações
+                bCol.appendChild(topLine);
+                bCol.appendChild(bottomLine);
                 timeCol.appendChild(topBadge);
                 timeCol.appendChild(bottomBadge);
 
@@ -551,10 +548,11 @@ function renderGrid(visibleBarbers, currentDateStr) {
         gridContainer.appendChild(bCol);
     });
 
-    els.gridBody.appendChild(linesContainer);
     els.gridBody.appendChild(gridContainer);
     if (window.lucide) lucide.createIcons();
 }
+
+
 
 function renderApp() {
     const currentDateStr = getLocalYYYYMMDD(state.currentDate);
