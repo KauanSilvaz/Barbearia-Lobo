@@ -43,6 +43,7 @@ const els = {
     newClientContainer: document.getElementById('new-client-container'),
     newClientName: document.getElementById('new-client-name'),
     newClientPhone: document.getElementById('new-client-phone'),
+    newClientEmail: document.getElementById('new-client-email'),
 
     // Elementos do Pagamento
     paymentModal: document.getElementById('payment-modal'),
@@ -76,9 +77,19 @@ if (els.formTime.tagName === 'SELECT') {
 }
 
 // --- UTILS & FUSO HORÁRIO MAIA/PORTUGAL ---
+
+// Mantém formato YYYY-MM-DD APENAS para alimentar os <input type="date"> do HTML
 const getLocalYYYYMMDD = (date) => {
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().split('T')[0];
+};
+
+// Nova função para o banco de dados (DD/MM/YYYY)
+const getFormattedDate = (date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 };
 
 const formatMinutesToTime = (minutes) => {
@@ -92,9 +103,10 @@ const getLisbonDateObj = () => {
     return new Date(lisbonTimeStr);
 };
 
+// Atualizado para retornar a data atual de Lisboa em DD/MM/YYYY
 const getLisbonCurrentDateStr = () => {
     const now = getLisbonDateObj();
-    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    return `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 };
 
 const getLisbonCurrentTime = () => {
@@ -195,7 +207,7 @@ function renderHeader(visibleBarbers) {
     });
 }
 
-function renderGrid(visibleBarbers, currentDateStr) {
+function renderGrid(visibleBarbers, currentDateStr, fallbackDateStr) {
     els.gridBody.innerHTML = '';
     
     const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -225,7 +237,8 @@ function renderGrid(visibleBarbers, currentDateStr) {
         }
     }
 
-    const todaysBookings = state.appointments.filter(b => b.date === currentDateStr);
+    // Busca tanto pelo formato novo DD/MM/YYYY quanto pelo antigo YYYY-MM-DD para não sumir dados antigos
+    const todaysBookings = state.appointments.filter(b => b.date === currentDateStr || b.date === fallbackDateStr);
 
     todaysBookings.forEach(appt => {
         const service = state.services.find(s => s.id === appt.serviceId) || {};
@@ -290,8 +303,8 @@ function renderGrid(visibleBarbers, currentDateStr) {
     }
 
     const lisbonDateStr = getLisbonCurrentDateStr();
-    
-    if (currentDateStr === lisbonDateStr) {
+    // Verifica se a data atual do grid bate com hoje, checando os dois formatos
+    if (currentDateStr === lisbonDateStr || fallbackDateStr === getLocalYYYYMMDD(getLisbonDateObj())) {
         const { h: currentH, m: currentM } = getLisbonCurrentTime();
         const topPx = (currentH - startHour) * 60 * pixelsPerMinute + (currentM * pixelsPerMinute) + topPadding;
 
@@ -564,17 +577,22 @@ function renderGrid(visibleBarbers, currentDateStr) {
 }
 
 function renderApp() {
-    const currentDateStr = getLocalYYYYMMDD(state.currentDate);
+    // Nova data para o banco: DD/MM/YYYY
+    const dbDateStr = getFormattedDate(state.currentDate);
+    // Data para o input do HTML (que só aceita formato americano YYYY-MM-DD)
+    const inputDateStr = getLocalYYYYMMDD(state.currentDate);
+    
     els.currentMonthDisplay.textContent = state.currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-    els.calendarPicker.value = currentDateStr;
-    els.formDate.value = currentDateStr;
+    els.calendarPicker.value = inputDateStr;
+    els.formDate.value = inputDateStr;
 
     const visibleBarbers = state.selectedBarber === 'all' 
         ? state.barbers 
         : state.barbers.filter(b => b.id === state.selectedBarber);
 
     renderHeader(visibleBarbers);
-    renderGrid(visibleBarbers, currentDateStr);
+    // Passamos os dois formatos para garantir que marcações antigas continuem aparecendo na tela
+    renderGrid(visibleBarbers, dbDateStr, inputDateStr);
 }
 
 // --- CONTROLES DO MODAL E AÇÕES ---
@@ -587,11 +605,25 @@ function openModal(data = {}) {
     els.newClientName.removeAttribute('required');
     els.newClientName.value = '';
     els.newClientPhone.value = '';
+    els.newClientEmail.value = '';
 
     els.formId.value = data.id || '';
     els.formStatus.value = data.status || 'confirmed';
     els.formClient.value = data.userId || (state.users.length > 0 ? state.users[0].id : '');
-    els.formDate.value = data.date || getLocalYYYYMMDD(state.currentDate);
+    
+    // Tratativa especial para carregar a data de volta pro formulário HTML
+    if (data.date) {
+        if (data.date.includes('/')) {
+            const [d, m, y] = data.date.split('/');
+            els.formDate.value = `${y}-${m}-${d}`;
+        } else {
+            // Se for um agendamento antigo (YYYY-MM-DD), carrega direto
+            els.formDate.value = data.date;
+        }
+    } else {
+        els.formDate.value = getLocalYYYYMMDD(state.currentDate);
+    }
+
     els.formBarber.value = data.barberId || state.barbers[0]?.id || '';
     els.formService.value = data.serviceId || state.services[0]?.id || '';
     els.formTime.value = data.startTime ? formatMinutesToTime(data.startTime) : '09:00';
@@ -678,6 +710,7 @@ els.btnToggleClient.onclick = () => {
         els.btnToggleClient.innerHTML = `<i data-lucide="user-plus" class="w-3 h-3"></i> <span id="text-toggle-client">Novo Cliente</span>`;
         els.formClient.setAttribute('required', 'true');
         els.newClientName.removeAttribute('required');
+        els.newClientEmail.value = '';
     }
     lucide.createIcons();
 };
@@ -699,11 +732,16 @@ els.form.onsubmit = async (e) => {
             const newClientData = {
                 name: clientName,
                 phone: els.newClientPhone.value || "",
+                email: els.newClientEmail.value || "",
+                membersSince: getFormattedDate(new Date()), // Salva no novo padrão
+                history: [],
+                isBlocked: false,
                 createdAt: new Date().toISOString()
             };
             const userDocRef = await addDoc(collection(db, "users"), newClientData);
             userId = userDocRef.id;
-        } else {
+        } 
+        else {
             const selectedUser = state.users.find(u => u.id === els.formClient.value);
             clientName = selectedUser ? selectedUser.name : "Cliente Desconhecido";
             userId = selectedUser ? selectedUser.id : "";
@@ -715,11 +753,15 @@ els.form.onsubmit = async (e) => {
         const startMins = (hours * 60) + minutes;
         const durationMins = Number(service?.duration) || 30;
 
+        // Converte a data do form do HTML (YYYY-MM-DD) para salvar no banco (DD/MM/YYYY)
+        const [y, m, d] = els.formDate.value.split('-');
+        const dbDate = `${d}/${m}/${y}`;
+
         const bookingData = {
             barberId: barber.id,
             barberName: barber.name,
             companyId: "sami", 
-            date: els.formDate.value,
+            date: dbDate, // Salva no formato DD/MM/YYYY
             startTime: startMins,
             endTime: startMins + durationMins, 
             price: service?.price || 0,
@@ -748,7 +790,7 @@ els.form.onsubmit = async (e) => {
                     tipo: isNew ? 'agendamento' : 'atualizacao',
                     nomeCliente: clientName,
                     nomeBarbeiro: barber.name,
-                    data: els.formDate.value.split('-').reverse().join('/'),
+                    data: dbDate, // Já está formatado bonitinho
                     hora: formatMinutesToTime(startMins)
                 })
             });
@@ -775,6 +817,10 @@ els.btnDelete.onclick = async () => {
 
         if (bookingData) {
             try {
+                // Caso a data ainda seja das antigas, formata pro webhook, se não envia como está
+                let notifDate = bookingData.date;
+                if(notifDate.includes('-')) notifDate = notifDate.split('-').reverse().join('/');
+                
                 await fetch(API_NOTIFICACOES_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -782,7 +828,7 @@ els.btnDelete.onclick = async () => {
                         tipo: 'cancelamento',
                         nomeCliente: bookingData.clientName,
                         nomeBarbeiro: bookingData.barberName,
-                        data: bookingData.date.split('-').reverse().join('/'),
+                        data: notifDate,
                         hora: formatMinutesToTime(bookingData.startTime)
                     })
                 });
@@ -881,15 +927,13 @@ els.paymentForm.onsubmit = async (e) => {
         const bookingData = state.appointments.find(a => a.id === bookingId);
         const change = method === 'dinheiro' ? (received - currentPaymentTotal) : 0;
         
-        // --- BUSCANDO O NOME DO CLIENTE CRUZANDO O ID ---
         let finalClientName = "Cliente Desconhecido";
         
         if (bookingData.userId) {
-            // Procura o usuário na lista state.users que já foi carregada do Firebase
             const clientUser = state.users.find(u => u.id === bookingData.userId);
             if (clientUser && clientUser.name) {
                 finalClientName = clientUser.name;
-            } else if (bookingData.clientName) { // Fallback de segurança
+            } else if (bookingData.clientName) {
                 finalClientName = bookingData.clientName;
             }
         } else if (bookingData.clientName) {
@@ -900,12 +944,12 @@ els.paymentForm.onsubmit = async (e) => {
             originalBookingId: bookingId,
             companyId: bookingData.companyId || "sami",
             userId: bookingData.userId || "",
-            clientName: finalClientName, // Agora ele salva o nome bonitinho
+            clientName: finalClientName,
             barberId: bookingData.barberId || "",
             barberName: bookingData.barberName || "Barbeiro",
             serviceId: bookingData.serviceId || "",
             serviceName: bookingData.serviceName || "Serviço",
-            scheduledDate: bookingData.date || getLocalYYYYMMDD(new Date()),
+            scheduledDate: bookingData.date || getFormattedDate(new Date()),
             completedAt: new Date().toISOString(),
             duration: (bookingData.endTime && bookingData.startTime) ? (bookingData.endTime - bookingData.startTime) : 0,
             currency: 'EUR',

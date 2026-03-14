@@ -1,8 +1,16 @@
-/* clientes.js - Versão Completa com Marca d'água e Sincronização de Logo */
+/* clientes.js - Versão Completa com Marca d'água, Sincronização de Logo e Avatar de Cliente */
 
 const app = {
     clientsData: [],
     currentClientId: null,
+
+    // Função de data atualizada para o formato DD/MM/YYYY
+    getFormattedDate: (date) => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    },
 
     init: async () => {
         // Inicia a sincronização da logo para marca d'água e header
@@ -73,9 +81,11 @@ const app = {
                     name: data.name || 'Sem nome',
                     phone: data.phone || 'Sem contato',
                     email: data.email || 'Sem email',
-                    since: data.membersSince || new Date().getFullYear().toString(),
+                    // Atualizado para chamar a função de data formatada
+                    since: data.memberSince || data.membersSince || app.getFormattedDate(new Date()),
                     history: data.history || [],
-                    isBlocked: data.isBlocked || false
+                    isBlocked: data.isBlocked || false,
+                    avatar: data.avatar || null // Puxando o avatar do banco de dados
                 });
             });
 
@@ -111,9 +121,14 @@ const app = {
                 ? `<span class="bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded text-[10px] font-bold border border-red-500/20 ml-2">Bloqueado</span>`
                 : '';
 
+            // Verifica se tem avatar para renderizar a imagem, senão usa as iniciais
+            const avatarDisplay = client.avatar 
+                ? `<img src="${client.avatar}" alt="${client.name}" class="w-full h-full object-cover rounded-full">`
+                : app.getInitials(client.name);
+
             row.innerHTML = `
                 <div class="col-span-4 sm:col-span-3 flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full bg-zinc-800 text-zinc-400 font-bold text-xs flex items-center justify-center border border-zinc-700 shrink-0">${app.getInitials(client.name)}</div>
+                    <div class="w-9 h-9 rounded-full bg-zinc-800 text-zinc-400 font-bold text-xs flex items-center justify-center border border-zinc-700 shrink-0 overflow-hidden">${avatarDisplay}</div>
                     <div class="flex items-center min-w-0">
                         <h3 class="text-sm font-bold text-zinc-200 truncate">${client.name}</h3>
                         ${blockedBadge}
@@ -162,7 +177,8 @@ const app = {
                 name,
                 phone,
                 email,
-                membersSince: new Date().getFullYear().toString(),
+                // Atualizado para chamar a função de data formatada
+                membersSince: app.getFormattedDate(new Date()),
                 avatar: null,
                 history: [],
                 isBlocked: false
@@ -186,7 +202,23 @@ const app = {
 
         app.currentClientId = id;
 
-        document.getElementById('detail-initials').innerText = app.getInitials(client.name);
+        // Renderização dinâmica do avatar ou iniciais no Modal
+        const avatarContainer = document.getElementById('detail-initials').parentElement;
+        const statusColor = client.isBlocked ? 'bg-red-500' : 'bg-emerald-500';
+
+        if (client.avatar) {
+            avatarContainer.innerHTML = `
+                <img src="${client.avatar}" alt="${client.name}" class="w-full h-full object-cover rounded-full">
+                <div class="absolute bottom-0 right-0 w-6 h-6 ${statusColor} border-2 border-zinc-900 rounded-full z-10"></div>
+                <span id="detail-initials" class="hidden"></span>
+            `;
+        } else {
+            avatarContainer.innerHTML = `
+                <span id="detail-initials">${app.getInitials(client.name)}</span>
+                <div class="absolute bottom-0 right-0 w-6 h-6 ${statusColor} border-2 border-zinc-900 rounded-full z-10"></div>
+            `;
+        }
+
         document.getElementById('detail-name').innerText = client.name;
         document.getElementById('detail-since').innerText = `Cliente desde ${client.since}`;
         document.getElementById('detail-phone').innerText = client.phone;

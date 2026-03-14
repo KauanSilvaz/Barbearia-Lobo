@@ -350,9 +350,31 @@ const app = {
             if(passInput) passInput.value = '';
             app.closeEmployeeModal();
             
-        } catch (error) {
+} catch (error) {
             console.error("Erro ao salvar no Firestore/Auth:", error);
-            alert(error.message || "Erro ao salvar dados.");
+            
+            // Tratamento de erros específicos do Firebase em Português
+            switch (error.code) {
+                case 'auth/email-already-in-use':
+                    alert("Este email já está cadastrado no sistema. Por questões de segurança, por favor, cadastre utilizando um email diferente.");
+                    break;
+                case 'auth/invalid-email':
+                    alert("O formato do email é inválido. Por favor, verifique se digitou corretamente (exemplo: nome@email.com).");
+                    break;
+                case 'auth/weak-password':
+                    alert("A senha escolhida é muito fraca. Por favor, crie uma senha com pelo menos 6 caracteres.");
+                    break;
+                case 'auth/network-request-failed':
+                    alert("Falha na conexão com a internet. Por favor, verifique sua rede e tente salvar novamente.");
+                    break;
+                case 'auth/too-many-requests':
+                    alert("Muitas tentativas de cadastro seguidas. Por favor, aguarde alguns minutos e tente novamente.");
+                    break;
+                default:
+                    // Caso seja um erro diferente que não mapeamos, ele mostra uma mensagem genérica ou a do próprio erro
+                    alert("Erro ao salvar dados. Por favor, tente novamente ou contate o suporte. Detalhe: " + (error.message || "Erro desconhecido."));
+                    break;
+            }
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
