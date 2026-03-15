@@ -12,6 +12,8 @@ const state = {
     schedule: null,
     currentDate: new Date(),
     selectedBarber: 'all',
+    autoScrollToCurrentTime: true,
+    savedScrollTop: 0
 };
 
 const els = {
@@ -208,6 +210,10 @@ function renderHeader(visibleBarbers) {
 }
 
 function renderGrid(visibleBarbers, currentDateStr, fallbackDateStr) {
+    if (!state.autoScrollToCurrentTime) {
+        state.savedScrollTop = els.gridBody.scrollTop;
+    }
+
     els.gridBody.innerHTML = '';
     
     const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -573,6 +579,34 @@ function renderGrid(visibleBarbers, currentDateStr, fallbackDateStr) {
     });
 
     els.gridBody.appendChild(gridContainer);
+
+    // NOVA LÓGICA DE SCROLL COM TIMEOUT
+    const isToday = (currentDateStr === lisbonDateStr || fallbackDateStr === getLocalYYYYMMDD(getLisbonDateObj()));
+    
+    if (isToday && state.autoScrollToCurrentTime) {
+        // Limpa a tentativa anterior caso o Firebase atualize a tela muito rápido
+        if (window.scrollTimeoutId) clearTimeout(window.scrollTimeoutId);
+        
+        // Aguarda 300ms para garantir que o DOM e o Firebase terminaram de montar tudo
+        window.scrollTimeoutId = setTimeout(() => {
+            const timeLine = document.getElementById('current-time-line-bar');
+            if (timeLine) {
+                const topPx = parseFloat(timeLine.style.top);
+                // Usa a API scrollTo que respeita o seu CSS e rola a tela suavemente
+                els.gridBody.scrollTo({
+                    top: Math.max(0, topPx - 100), // 100px de folga no topo
+                    behavior: 'smooth'
+                });
+            }
+            // Só desliga o foco DEPOIS que a tela realmente desceu
+            state.autoScrollToCurrentTime = false; 
+        }, 300);
+        
+    } else if (!state.autoScrollToCurrentTime && state.savedScrollTop !== undefined) {
+        // Se não for pra focar na hora, mantém a tela onde o usuário estava olhando
+        els.gridBody.scrollTop = state.savedScrollTop;
+    }
+
     if (window.lucide) lucide.createIcons();
 }
 
@@ -673,9 +707,27 @@ window.app = {
 els.btnCloseModal.onclick = closeModal;
 els.barberFilter.onchange = (e) => { state.selectedBarber = e.target.value; renderApp(); };
 document.getElementById('btn-new-appt').onclick = () => openModal();
-document.getElementById('btn-next-days').onclick = () => { state.currentDate.setDate(state.currentDate.getDate() + 1); renderApp(); };
-document.getElementById('btn-prev-days').onclick = () => { state.currentDate.setDate(state.currentDate.getDate() - 1); renderApp(); };
-document.getElementById('btn-today').onclick = () => { state.currentDate = new Date(); renderApp(); };
+
+document.getElementById('btn-next-days').onclick = () => { 
+    state.currentDate.setDate(state.currentDate.getDate() + 1); 
+    state.savedScrollTop = 0;
+    state.autoScrollToCurrentTime = false;
+    renderApp(); 
+};
+
+document.getElementById('btn-prev-days').onclick = () => { 
+    state.currentDate.setDate(state.currentDate.getDate() - 1); 
+    state.savedScrollTop = 0;
+    state.autoScrollToCurrentTime = false;
+    renderApp(); 
+};
+
+document.getElementById('btn-today').onclick = () => { 
+    state.currentDate = new Date(); 
+    state.autoScrollToCurrentTime = true;
+    state.savedScrollTop = 0;
+    renderApp(); 
+};
 
 // FORÇA O CALENDÁRIO A ABRIR QUANDO CLICAR NO TEXTO/ÍCONE
 document.getElementById('btn-current-month').onclick = () => {
@@ -690,6 +742,8 @@ els.calendarPicker.addEventListener('change', (e) => {
     if (e.target.value) {
         const [year, month, day] = e.target.value.split('-');
         state.currentDate = new Date(year, month - 1, day);
+        state.savedScrollTop = 0;
+        state.autoScrollToCurrentTime = true;
         renderApp();
     }
 });
