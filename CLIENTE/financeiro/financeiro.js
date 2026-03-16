@@ -1,4 +1,4 @@
-/* financeiro.js - COMPLETO COM PDV (CAIXA), REAL-TIME SYNC, EXCLUSÃO E CORES NO GRÁFICO */
+/* financeiro.js - COMPLETO COM PDV (CAIXA), REAL-TIME SYNC, BLINDAGEM DE DATAS, EXCLUSÃO E CORES NO GRÁFICO */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, addDoc, query, orderBy, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -140,14 +140,11 @@ const financeApp = {
         document.getElementById('pos-form').addEventListener('submit', financeApp.salvarVendaPos);
     },
 
-iniciarSincronizacaoRealTime: () => {
+    iniciarSincronizacaoRealTime: () => {
         // 1. Sincroniza o Histórico (Real-time)
         const historyRef = collection(db, "history");
-        
-        // ❌ REMOVIDO o orderBy do Firebase para não ocultar documentos sem 'completedAt'
-        // const q = query(historyRef, orderBy("completedAt", "desc")); 
 
-        // ✅ Agora escutamos a coleção inteira diretamente
+        // ✅ Escutamos a coleção inteira diretamente, sem orderBy para não ocultar nada
         onSnapshot(historyRef, (snapshot) => {
             todosOsDados = [];
             const barbeirosSet = new Set();
@@ -155,12 +152,30 @@ iniciarSincronizacaoRealTime: () => {
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 
-                // Proteção para pegar a data correta sem risco de quebrar no .split()
-                let dataFormatada = data.date || data.scheduledDate || "";
-                if (!dataFormatada && data.completedAt) {
-                    dataFormatada = data.completedAt.split('T')[0];
-                } else if (!dataFormatada) {
-                    dataFormatada = new Date().toISOString().split('T')[0]; // Fallback de segurança
+                // 🛡️ BLINDAGEM DE DATAS: Recebe qualquer formato e padroniza para YYYY-MM-DD
+                let rawDate = data.completedAt || data.scheduledDate || data.date || "";
+                let dataFormatada = "";
+
+                if (rawDate.includes('T')) {
+                    // Cenário 1: Formato ISO com Hora (ex: "2026-03-16T18:43:37.629Z")
+                    dataFormatada = rawDate.split('T')[0];
+                } else if (rawDate.includes('/')) {
+                    // Cenário 2: Formato PT/BR com barras (ex: "16/03/2026")
+                    const partes = rawDate.split('/');
+                    if (partes.length === 3) {
+                        const dia = partes[0].padStart(2, '0');
+                        const mes = partes[1].padStart(2, '0');
+                        const ano = partes[2];
+                        dataFormatada = `${ano}-${mes}-${dia}`;
+                    } else {
+                        dataFormatada = new Date().toISOString().split('T')[0]; // Falha segura
+                    }
+                } else if (rawDate.includes('-')) {
+                    // Cenário 3: Já está no formato ISO simples (ex: "2026-03-16")
+                    dataFormatada = rawDate;
+                } else {
+                    // Cenário 4: Veio vazio ou corrompido, assume a data de hoje
+                    dataFormatada = new Date().toISOString().split('T')[0];
                 }
 
                 todosOsDados.push({
@@ -181,7 +196,7 @@ iniciarSincronizacaoRealTime: () => {
                 if(data.barberName) barbeirosSet.add(data.barberName);
             });
 
-            // ✅ Ordenação feita no lado do cliente com JavaScript (mais seguro para schemas variados)
+            // ✅ Ordenação feita no lado do cliente com JavaScript
             todosOsDados.sort((a, b) => new Date(b.dataHoraSucesso) - new Date(a.dataHoraSucesso));
 
             // Preenche select de exportação
@@ -410,15 +425,14 @@ iniciarSincronizacaoRealTime: () => {
         const labelsBarbeiros = Object.keys(faturamentoBarbeiro);
         const dataBarbeiros = Object.values(faturamentoBarbeiro);
         
-        // Mapeia a cor de cada barbeiro baseada nos dados carregados do banco (posState.barbers)
         const coresBarbeiros = labelsBarbeiros.map(nomeBarbeiro => {
             const barbeiro = posState.barbers.find(b => b.name === nomeBarbeiro);
-            return (barbeiro && barbeiro.color) ? barbeiro.color : '#10b981'; // #10b981 é o verde esmeralda padrão
+            return (barbeiro && barbeiro.color) ? barbeiro.color : '#10b981';
         });
 
         graficos.barberChart.data.labels = labelsBarbeiros;
         graficos.barberChart.data.datasets[0].data = dataBarbeiros;
-        graficos.barberChart.data.datasets[0].backgroundColor = coresBarbeiros; // Aplica a lista de cores dinâmicas
+        graficos.barberChart.data.datasets[0].backgroundColor = coresBarbeiros; 
         graficos.barberChart.update();
 
         graficos.servicesChart.data.labels = Object.keys(mixServicos);
@@ -452,10 +466,14 @@ iniciarSincronizacaoRealTime: () => {
                 ${iconesMetodo[row.metodo] || iconesMetodo['Não Inf.']}
             </div>`;
 
+            // Formata YYYY-MM-DD de volta para DD/MM/YYYY na visualização
+            const partesData = row.data.split('-');
+            const dataExibicao = partesData.length === 3 ? `${partesData[2]}/${partesData[1]}/${partesData[0]}` : row.data;
+
             const dadosJson = encodeURIComponent(JSON.stringify(row));
 
             tr.innerHTML = `
-                <td class="px-6 py-3 text-zinc-300 font-mono text-xs">${row.data}</td>
+                <td class="px-6 py-3 text-zinc-300 font-mono text-xs">${dataExibicao}</td>
                 <td class="px-6 py-3 text-zinc-300 text-xs font-medium">${row.barbeiro}</td>
                 <td class="px-6 py-3">
                     <div class="flex flex-col">
@@ -514,7 +532,7 @@ iniciarSincronizacaoRealTime: () => {
             head: [['Data', 'Barbeiro', 'Cliente', 'Serviço', 'Pagto', 'Valor']],
             body: linhasTabela,
             theme: 'grid',
-            headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255] }, // Emerald
+            headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255] },
             styles: { fontSize: 8 }
         });
 
