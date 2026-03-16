@@ -140,20 +140,32 @@ const financeApp = {
         document.getElementById('pos-form').addEventListener('submit', financeApp.salvarVendaPos);
     },
 
-    iniciarSincronizacaoRealTime: () => {
-        // 1. Sincroniza o Histórico (Real-time com a tela Home)
+iniciarSincronizacaoRealTime: () => {
+        // 1. Sincroniza o Histórico (Real-time)
         const historyRef = collection(db, "history");
-        const q = query(historyRef, orderBy("completedAt", "desc")); 
+        
+        // ❌ REMOVIDO o orderBy do Firebase para não ocultar documentos sem 'completedAt'
+        // const q = query(historyRef, orderBy("completedAt", "desc")); 
 
-        onSnapshot(q, (snapshot) => {
+        // ✅ Agora escutamos a coleção inteira diretamente
+        onSnapshot(historyRef, (snapshot) => {
             todosOsDados = [];
             const barbeirosSet = new Set();
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
+                
+                // Proteção para pegar a data correta sem risco de quebrar no .split()
+                let dataFormatada = data.date || data.scheduledDate || "";
+                if (!dataFormatada && data.completedAt) {
+                    dataFormatada = data.completedAt.split('T')[0];
+                } else if (!dataFormatada) {
+                    dataFormatada = new Date().toISOString().split('T')[0]; // Fallback de segurança
+                }
+
                 todosOsDados.push({
                     id: doc.id,
-                    data: data.date || data.scheduledDate || data.completedAt.split('T')[0],
+                    data: dataFormatada,
                     cliente: data.clientName || "Cliente Avulso",
                     clienteId: data.userId || "avulso",
                     servico: data.serviceName || "Venda Avulsa",
@@ -163,10 +175,14 @@ const financeApp = {
                     recebido: data.amountReceived || Number(data.finalPrice || data.price || 0),
                     troco: data.changeReturned || 0,
                     status: 'Concluído',
-                    dataHoraSucesso: data.completedAt
+                    dataHoraSucesso: data.completedAt || data.scheduledDate || data.date || new Date().toISOString()
                 });
+                
                 if(data.barberName) barbeirosSet.add(data.barberName);
             });
+
+            // ✅ Ordenação feita no lado do cliente com JavaScript (mais seguro para schemas variados)
+            todosOsDados.sort((a, b) => new Date(b.dataHoraSucesso) - new Date(a.dataHoraSucesso));
 
             // Preenche select de exportação
             const selectExport = document.getElementById('export-barber-select');
@@ -180,7 +196,7 @@ const financeApp = {
             });
             selectExport.value = valorAtual || 'todos';
 
-            // Reaplica o filtro ativo
+            // Reaplica o filtro ativo (Hoje, Semana, Mês)
             const botaoAtivo = document.querySelector('.btn-periodo.bg-zinc-800') || document.getElementById('btn-mes');
             if (botaoAtivo) botaoAtivo.click();
         });
@@ -192,8 +208,6 @@ const financeApp = {
         
         onSnapshot(collection(db, "employees"), (snap) => {
             posState.barbers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            // Atualiza os gráficos para garantir que as cores sejam aplicadas 
-            // logo após os dados dos barbeiros carregarem
             if (dadosExibidos.length > 0) {
                 financeApp.atualizarGraficos(dadosExibidos);
             }

@@ -33,6 +33,7 @@ const els = {
     formTime: document.getElementById('form-time'),
     formNotes: document.getElementById('form-notes'),
     btnDelete: document.getElementById('btn-delete'),
+    btnRemind: document.getElementById('btn-remind'),
     btnCloseModal: document.getElementById('btn-close-modal'),
     modalActions: document.getElementById('modal-actions'),
     btnStatusConfirm: document.getElementById('btn-status-confirm'),
@@ -664,15 +665,18 @@ function openModal(data = {}) {
     els.formNotes.value = data.notes || ''; 
 
     if (data.id) {
-        els.btnDelete.classList.remove('hidden');
+        if (els.btnDelete) els.btnDelete.classList.remove('hidden');
+        if (els.btnRemind) els.btnRemind.classList.remove('hidden'); // Exibe o botão de aviso
         els.modalActions.classList.remove('hidden');
         if (els.btnStatusConfirm) els.btnStatusConfirm.classList.add('hidden');
     } else {
-        els.btnDelete.classList.add('hidden');
+        if (els.btnDelete) els.btnDelete.classList.add('hidden');
+        if (els.btnRemind) els.btnRemind.classList.add('hidden'); // Oculta o botão de aviso
         els.modalActions.classList.add('hidden');
     }
 
     els.modal.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
 }
 
 function closeModal() {
@@ -892,6 +896,54 @@ els.btnDelete.onclick = async () => {
         }
 
         closeModal();
+    }
+};
+
+// ==========================================
+// NOVO: LÓGICA DO BOTÃO DE AVISO (ENVIANDO PRO FIREBASE/PYTHON)
+// ==========================================
+els.btnRemind.onclick = async () => {
+    const bookingId = els.formId.value;
+    const bookingData = state.appointments.find(a => a.id === bookingId);
+
+    if (!bookingData) return;
+
+    // Acha o usuário na sua lista para pegar o e-mail
+    const clientUser = state.users.find(u => u.id === bookingData.userId);
+
+    if (!clientUser || !clientUser.email) {
+        alert("Este cliente não possui um e-mail cadastrado em seu perfil.");
+        return;
+    }
+
+    const btnOriginalHTML = els.btnRemind.innerHTML;
+    els.btnRemind.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Enviando...`;
+    els.btnRemind.disabled = true;
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        // Envia os dados para a fila do Firebase para o Python processar
+        await addDoc(collection(db, "fila_emails"), {
+            tipo: "manual",
+            emailDestino: clientUser.email,
+            nomeCliente: clientUser.name || bookingData.clientName,
+            dataAgendamento: bookingData.date,
+            horaAgendamento: formatMinutesToTime(bookingData.startTime),
+            barbeiroNome: bookingData.barberName,
+            servico: bookingData.serviceName || "Serviço",
+            preco: bookingData.price || 0,
+            status: "pendente",
+            criadoEm: new Date().toISOString()
+        });
+        
+        alert("Comando enviado para o servidor da loja! O e-mail será disparado em segundos.");
+    } catch (error) {
+        console.error("Erro ao enfileirar e-mail:", error);
+        alert("Ocorreu um erro ao tentar enviar o aviso.");
+    } finally {
+        els.btnRemind.innerHTML = btnOriginalHTML;
+        els.btnRemind.disabled = false;
+        if (window.lucide) lucide.createIcons();
     }
 };
 

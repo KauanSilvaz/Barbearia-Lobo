@@ -18,9 +18,19 @@ if (loggedBarberPhoto) {
 }
 
 // --- UTILS & FUSO HORÁRIO (Lisboa/Portugal) ---
+
+// Mantém formato YYYY-MM-DD APENAS para alimentar os <input type="date"> do HTML
 const getLocalYYYYMMDD = (date) => {
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().split('T')[0];
+};
+
+// Nova função para o banco de dados (DD/MM/YYYY)
+const getFormattedDate = (date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 };
 
 const formatMinutesToTime = (minutes) => {
@@ -40,9 +50,10 @@ const getLisbonDateObj = () => {
     return new Date(lisbonTimeStr);
 };
 
+// Atualizado para retornar a data atual de Lisboa em DD/MM/YYYY para comparar com a linha do tempo
 const getLisbonCurrentDateStr = () => {
     const now = getLisbonDateObj();
-    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    return `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 };
 
 const getLisbonCurrentTime = () => {
@@ -53,7 +64,7 @@ const getLisbonCurrentTime = () => {
 const app = {
     currentDate: new Date(),
     view: 'agenda',
-    schedule: null, // Horário da barbearia (BD)
+    schedule: null, 
     appointments: [], 
     historyData: [],
     users: [],
@@ -61,6 +72,8 @@ const app = {
     currentEmployee: null, 
     isCreatingNewClient: false,
     currentPaymentTotal: 0,
+    autoScrollToCurrentTime: true,
+    savedScrollTop: 0,
 
     init: () => {
         app.setupFirebaseListeners();
@@ -100,7 +113,6 @@ const app = {
     },
 
     setupFirebaseListeners: () => {
-        // Horários globais do BD
         onSnapshot(doc(db, "settings", "schedule"), (snapshot) => {
             if (snapshot.exists()) {
                 app.schedule = snapshot.data();
@@ -108,19 +120,17 @@ const app = {
             }
         });
 
-        // Dados do Barbeiro logado
         onSnapshot(doc(db, "employees", loggedBarberId), (docSnap) => {
             if (docSnap.exists()) {
                 app.currentEmployee = docSnap.data();
                 const barberColor = app.currentEmployee.color || '#f59e0b';
                 
-                // Aplicar cor do barbeiro nos elementos UI
                 document.getElementById('barber-photo').style.borderColor = barberColor;
                 document.getElementById('barber-icon').style.color = barberColor;
-                document.getElementById('barber-icon').style.borderColor = `${barberColor}40`; // 40 = hex alpha opacity
+                document.getElementById('barber-icon').style.borderColor = `${barberColor}40`; 
                 document.getElementById('barber-icon').style.backgroundColor = `${barberColor}1A`; 
                 document.getElementById('fab-new').style.backgroundColor = barberColor;
-                document.getElementById('fab-new').style.color = '#000'; // contraste
+                document.getElementById('fab-new').style.color = '#000'; 
                 
                 app.renderGrid(); 
             }
@@ -160,8 +170,10 @@ const app = {
         data.forEach(item => selectEl.add(new Option(item.name, item.id)));
     },
 
-updateMetrics: () => {
-        const todayStr = getLocalYYYYMMDD(app.currentDate);
+    updateMetrics: () => {
+        const inputDateStr = getLocalYYYYMMDD(app.currentDate);
+        const dbDateStr = getFormattedDate(app.currentDate);
+        
         const currentMonth = app.currentDate.getMonth();
         const currentYear = app.currentDate.getFullYear();
 
@@ -171,12 +183,11 @@ updateMetrics: () => {
         let clientsTodayCount = 0;
 
         app.historyData.forEach(h => {
-            // Puxa a data de onde ela estiver (Admin salva como scheduledDate, barbeiro salva como date)
             const dateField = h.date || h.scheduledDate || (h.completedAt ? h.completedAt.split('T')[0] : ''); 
             const hDate = new Date(h.completedAt || dateField); 
             const price = Number(h.finalPrice || h.price) || 0;
 
-            if (dateField === todayStr) moneyToday += price;
+            if (dateField === inputDateStr || dateField === dbDateStr) moneyToday += price;
             
             if (hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear) {
                 moneyMonth += price;
@@ -185,7 +196,7 @@ updateMetrics: () => {
         });
 
         app.appointments.forEach(a => {
-            if (a.date === todayStr) clientsTodayCount++;
+            if (a.date === inputDateStr || a.date === dbDateStr) clientsTodayCount++;
         });
 
         document.getElementById('metric-today-money').innerHTML = `€ ${moneyToday.toFixed(2)} <span class="block text-[11px] text-emerald-400 mt-1 border-t border-zinc-700/50 pt-1">Teu: € ${(moneyToday * 0.5).toFixed(2)}</span>`;
@@ -214,22 +225,31 @@ updateMetrics: () => {
 
     changeDate: (days) => {
         app.currentDate.setDate(app.currentDate.getDate() + days);
+        app.autoScrollToCurrentTime = false;
+        app.savedScrollTop = 0;
         app.updateMetrics();
         app.renderGrid();
     },
 
-    // --- NOVA RENDERIZAÇÃO ABSOLUTA DA GRADE ---
     renderGrid: () => {
         const emp = app.currentEmployee;
         if (!emp) return; 
+
+        if (!app.autoScrollToCurrentTime) {
+            app.savedScrollTop = document.getElementById('grid-body').scrollTop;
+        }
 
         const header = document.getElementById('grid-header');
         const body = document.getElementById('grid-body');
         const dateDisplay = document.getElementById('current-date-display');
         
         const todayStr = getLocalYYYYMMDD(new Date());
-        const dateKey = getLocalYYYYMMDD(app.currentDate);
-        dateDisplay.innerText = todayStr === dateKey ? 'Hoje' : app.currentDate.toLocaleDateString('pt-PT', {day:'numeric', month:'short'});
+        
+        // Passamos os dois formatos para garantir que marcações antigas continuem aparecendo
+        const dbDateStr = getFormattedDate(app.currentDate);
+        const inputDateStr = getLocalYYYYMMDD(app.currentDate);
+
+        dateDisplay.innerText = todayStr === inputDateStr ? 'Hoje' : app.currentDate.toLocaleDateString('pt-PT', {day:'numeric', month:'short'});
 
         if (emp.isBlocked) {
             body.innerHTML = `
@@ -247,13 +267,11 @@ updateMetrics: () => {
 
         const barberColor = emp.color || '#f59e0b';
         
-        // CORREÇÃO DOS DIAS COM PRIMEIRA LETRA MAIÚSCULA
         const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
         const dayOfWeek = daysMap[app.currentDate.getDay()];
 
-        // 1. Calcular startHour e endHour dinamicamente do BD global
         let startHour = 8; 
-        let endHour = 22; // Default
+        let endHour = 22; 
 
         if (app.schedule) {
             if (app.schedule.dailySchedules && app.schedule.dailySchedules[dayOfWeek]) {
@@ -276,9 +294,8 @@ updateMetrics: () => {
             }
         }
 
-        const todaysBookings = app.appointments.filter(b => b.date === dateKey);
+        const todaysBookings = app.appointments.filter(b => b.date === dbDateStr || b.date === inputDateStr);
 
-        // Expandir a grade se houver agendamentos fora do horário normal
         todaysBookings.forEach(appt => {
             const service = app.services.find(s => s.id === appt.serviceId) || {};
             const duration = (appt.endTime && appt.startTime) ? (appt.endTime - appt.startTime) : (Number(service.duration) || 30);
@@ -295,7 +312,6 @@ updateMetrics: () => {
         const topPadding = 20; 
         const totalHeight = (endHour - startHour + 1) * 60 * pixelsPerMinute + topPadding;
 
-        // Cabeçalho da grade
         header.innerHTML = `
             <div class="w-16 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/50 sticky left-0 z-20"></div>
             <div class="flex-1 w-full min-w-[200px] p-3 text-center bg-zinc-900/40">
@@ -303,17 +319,14 @@ updateMetrics: () => {
                 <div class="text-xl font-bold text-white">${app.currentDate.getDate()}</div>
             </div>`;
 
-        // Container principal da grade
         body.innerHTML = '';
         const gridContainer = document.createElement('div');
         gridContainer.className = 'flex relative w-full min-w-max';
         gridContainer.style.height = `${totalHeight}px`;
 
-        // Coluna de tempo à esquerda
         const timeCol = document.createElement('div');
         timeCol.className = 'w-16 flex-shrink-0 border-r border-zinc-800/50 relative bg-zinc-950/80 z-20 backdrop-blur-sm sticky left-0';
 
-        // Linhas horizontais e marcações
         const linesContainer = document.createElement('div');
         linesContainer.className = 'absolute inset-0 pointer-events-none w-full flex';
         linesContainer.innerHTML = `<div class="w-16 flex-shrink-0 sticky left-0"></div>`;
@@ -351,10 +364,9 @@ updateMetrics: () => {
             }
         }
 
-        // --- LINHA DO TEMPO ATUAL (LARANJA/FUSO LISBOA) ---
         const lisbonDateStr = getLisbonCurrentDateStr();
         
-        if (dateKey === lisbonDateStr) {
+        if (dbDateStr === lisbonDateStr || inputDateStr === getLocalYYYYMMDD(getLisbonDateObj())) {
             const { h: currentH, m: currentM } = getLisbonCurrentTime();
             const topPx = (currentH - startHour) * 60 * pixelsPerMinute + (currentM * pixelsPerMinute) + topPadding;
 
@@ -362,7 +374,7 @@ updateMetrics: () => {
             timeLine.id = 'current-time-line-bar';
             timeLine.className = 'absolute left-0 w-full border-t-[2px] shadow-[0_0_12px_rgba(245,158,11,0.8)] z-50 pointer-events-none transition-all duration-1000 ease-linear';
             timeLine.style.top = `${topPx}px`;
-            timeLine.style.borderColor = barberColor; // Linha da cor do barbeiro!
+            timeLine.style.borderColor = barberColor; 
             timeLine.style.display = (currentH >= startHour && currentH <= endHour) ? 'block' : 'none';
             linesContent.appendChild(timeLine);
 
@@ -370,7 +382,7 @@ updateMetrics: () => {
             timeBadge.id = 'current-time-line-badge';
             timeBadge.className = 'absolute right-0 text-black text-[11px] font-bold px-2 py-0.5 rounded-l-md shadow-lg z-50 transform -translate-y-1/2 flex items-center gap-1.5 transition-all duration-1000 ease-linear';
             timeBadge.style.top = `${topPx}px`;
-            timeBadge.style.backgroundColor = barberColor; // Etiqueta da cor do barbeiro!
+            timeBadge.style.backgroundColor = barberColor; 
             timeBadge.style.display = (currentH >= startHour && currentH <= endHour) ? 'flex' : 'none';
             timeBadge.innerHTML = `<span class="animate-pulse w-1.5 h-1.5 bg-black rounded-full"></span> <span id="current-time-text">${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}</span>`;
             timeCol.appendChild(timeBadge);
@@ -404,7 +416,6 @@ updateMetrics: () => {
         linesContainer.appendChild(linesContent);
         gridContainer.appendChild(timeCol);
 
-        // Coluna clicável para os agendamentos do Barbeiro
         const bCol = document.createElement('div');
         bCol.className = 'flex-1 relative cursor-pointer hover:bg-zinc-800/10 transition-colors z-10 w-full min-w-[200px]';
 
@@ -417,7 +428,6 @@ updateMetrics: () => {
             app.openModal(null, clickedMinuteOfDay);
         };
 
-        // Algoritmo de sobreposição e renderização dos cards (igual ao Home)
         const sortedBookings = [...todaysBookings].sort((a, b) => a.startTime - b.startTime);
         const groups = [];
         let currentGroup = [];
@@ -467,7 +477,6 @@ updateMetrics: () => {
                 const topPx = (startMins * pixelsPerMinute) + topPadding;
                 const heightPx = duration * pixelsPerMinute;
 
-                // --- Linhas e Etiquetas de Agendamento (Vermelhas) ---
                 const topLine = document.createElement('div');
                 topLine.className = 'absolute left-0 w-full border-t-[1.5px] border-red-500 z-10 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.6)] opacity-50';
                 topLine.style.top = `${topPx}px`;
@@ -491,9 +500,7 @@ updateMetrics: () => {
                 timeCol.appendChild(topBadge);
                 timeCol.appendChild(bottomBadge);
 
-                // Aplicação da cor personalizada do Barbeiro no card
                 let colorClasses = "bg-zinc-900 border-zinc-800";
-                
                 let opacityClass = '';
                 let textDecorationClass = 'text-zinc-100';
                 let dotColorClass = '';
@@ -501,10 +508,10 @@ updateMetrics: () => {
                 if (appt.status === 'completed') {
                     opacityClass = 'opacity-40 grayscale hover:grayscale-0 border-l-zinc-400 bg-zinc-800';
                     textDecorationClass = 'line-through text-zinc-500';
-                    dotColorClass = 'background-color: #a1a1aa'; // zinc-400
+                    dotColorClass = 'background-color: #a1a1aa'; 
                 } else {
                     opacityClass = 'border-l-[4px]';
-                    dotColorClass = `background-color: ${barberColor}`; // Usa a cor do barbeiro
+                    dotColorClass = `background-color: ${barberColor}`; 
                 }
 
                 const widthPct = 100 / numCols;
@@ -557,13 +564,32 @@ updateMetrics: () => {
         gridContainer.appendChild(bCol);
         body.appendChild(linesContainer);
         body.appendChild(gridContainer);
+
+        // --- LÓGICA DE SCROLL AUTOMÁTICO ---
+        const isToday = (dbDateStr === lisbonDateStr || inputDateStr === getLocalYYYYMMDD(getLisbonDateObj()));
+        if (isToday && app.autoScrollToCurrentTime) {
+            if (window.scrollTimeoutId) clearTimeout(window.scrollTimeoutId);
+            window.scrollTimeoutId = setTimeout(() => {
+                const timeLine = document.getElementById('current-time-line-bar');
+                if (timeLine) {
+                    const topPx = parseFloat(timeLine.style.top);
+                    body.scrollTo({
+                        top: Math.max(0, topPx - 100), 
+                        behavior: 'smooth'
+                    });
+                }
+                app.autoScrollToCurrentTime = false; 
+            }, 300);
+        } else if (!app.autoScrollToCurrentTime && app.savedScrollTop !== undefined) {
+            body.scrollTop = app.savedScrollTop;
+        }
+
         if (window.lucide) lucide.createIcons();
     },
 
-renderHistory: () => {
+    renderHistory: () => {
         const list = document.getElementById('history-list');
         
-        // Ordena do mais recente pro mais antigo usando a data que existir
         const past = [...app.historyData].sort((a,b) => {
             const dateA = new Date(a.completedAt || a.scheduledDate || a.date || 0);
             const dateB = new Date(b.completedAt || b.scheduledDate || b.date || 0);
@@ -576,9 +602,8 @@ renderHistory: () => {
         }
 
         list.innerHTML = past.map(a => {
-            // Puxa a data de onde ela estiver salva para não dar erro no split
             const rawDate = a.date || a.scheduledDate || (a.completedAt ? a.completedAt.split('T')[0] : '');
-            const formattedDate = (rawDate && rawDate.includes('-')) ? rawDate.split('-').reverse().join('/') : 'Sem data';
+            const formattedDate = (rawDate && rawDate.includes('-')) ? rawDate.split('-').reverse().join('/') : (rawDate || 'Sem data');
 
             return `
             <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30">
@@ -612,6 +637,7 @@ renderHistory: () => {
             btn.innerHTML = `<i data-lucide="user-plus" class="w-3 h-3"></i> <span id="text-toggle-client">Novo Cliente</span>`;
             select.setAttribute('required', 'true');
             inputName.removeAttribute('required');
+            document.getElementById('new-client-email').value = '';
         }
         if (window.lucide) lucide.createIcons();
     },
@@ -627,8 +653,8 @@ renderHistory: () => {
         const saveBtn = document.getElementById('btn-save');
         
         const todayStr = getLocalYYYYMMDD(new Date());
-        const dateKey = getLocalYYYYMMDD(app.currentDate);
-        const isPastDate = dateKey < todayStr;
+        const dateKeyInput = getLocalYYYYMMDD(app.currentDate);
+        const isPastDate = dateKeyInput < todayStr;
 
         if (isPastDate && !id) {
             app.showToast("Não é possível adicionar agendamentos no passado.");
@@ -642,15 +668,16 @@ renderHistory: () => {
         document.getElementById('btn-toggle-client').innerHTML = `<i data-lucide="user-plus" class="w-3 h-3"></i> <span id="text-toggle-client">Novo Cliente</span>`;
         document.getElementById('appt-client').setAttribute('required', 'true');
         document.getElementById('new-client-name').removeAttribute('required');
+        document.getElementById('new-client-email').value = '';
 
         document.getElementById('appt-id').value = '';
-        document.getElementById('appt-date').value = dateKey;
+        document.getElementById('appt-date').value = dateKeyInput;
         document.getElementById('appt-notes').value = '';
         
         if (startMins !== null) {
             document.getElementById('appt-time').value = formatMinutesToTime(startMins);
         } else {
-            if (dateKey === todayStr) {
+            if (dateKeyInput === todayStr) {
                 const now = new Date();
                 let m = now.getMinutes();
                 m = Math.ceil(m / 5) * 5; 
@@ -668,7 +695,15 @@ renderHistory: () => {
                 document.getElementById('appt-id').value = currentAppt.id;
                 document.getElementById('appt-client').value = currentAppt.userId || '';
                 document.getElementById('appt-service').value = currentAppt.serviceId || '';
-                document.getElementById('appt-date').value = currentAppt.date;
+                
+                // Tratativa especial para carregar a data de volta pro formulário HTML (que exige YYYY-MM-DD)
+                if (currentAppt.date && currentAppt.date.includes('/')) {
+                    const [d, m, y] = currentAppt.date.split('/');
+                    document.getElementById('appt-date').value = `${y}-${m}-${d}`;
+                } else {
+                    document.getElementById('appt-date').value = currentAppt.date;
+                }
+                
                 document.getElementById('appt-time').value = formatMinutesToTime(currentAppt.startTime);
                 document.getElementById('appt-notes').value = currentAppt.notes || ''; 
             }
@@ -697,7 +732,6 @@ renderHistory: () => {
             }
         }
 
-        // Aplica a cor do barbeiro no botão salvar do modal
         const barberColor = app.currentEmployee?.color || '#f59e0b';
         saveBtn.style.backgroundColor = barberColor;
         saveBtn.style.color = '#000';
@@ -710,11 +744,16 @@ renderHistory: () => {
 
     saveAppt: async () => {
         if (app.currentEmployee?.isBlocked) return;
-        const apptDate = document.getElementById('appt-date').value;
-        if (apptDate < getLocalYYYYMMDD(new Date())) {
+        const apptDateInput = document.getElementById('appt-date').value;
+        
+        if (apptDateInput < getLocalYYYYMMDD(new Date())) {
             alert("Não é possível salvar informações em dias passados.");
             return;
         }
+
+        // Converte a data do form do HTML (YYYY-MM-DD) para salvar no banco (DD/MM/YYYY)
+        const [y, m, d] = apptDateInput.split('-');
+        const dbDate = `${d}/${m}/${y}`;
 
         const id = document.getElementById('appt-id').value;
         const service = app.services.find(s => s.id === document.getElementById('appt-service').value);
@@ -731,6 +770,7 @@ renderHistory: () => {
             const newClientData = {
                 name: clientName,
                 phone: document.getElementById('new-client-phone').value || "",
+                email: document.getElementById('new-client-email')?.value || "",
                 createdAt: new Date().toISOString()
             };
             const userDocRef = await addDoc(collection(db, "users"), newClientData);
@@ -753,7 +793,7 @@ renderHistory: () => {
             barberId: loggedBarberId,
             barberName: loggedBarberName,
             companyId: "sami", 
-            date: apptDate,
+            date: dbDate, // Salva no formato DD/MM/YYYY
             startTime: startMins,
             endTime: startMins + durationMins, 
             price: service.price || 0,
@@ -780,6 +820,56 @@ renderHistory: () => {
         }
     },
 
+    sendReminder: async () => {
+        if (app.currentEmployee?.isBlocked) return;
+        
+        const id = document.getElementById('appt-id').value;
+        if (!id) return;
+        
+        const bookingData = app.appointments.find(a => a.id === id);
+        if (!bookingData) return;
+
+        const clientUser = app.users.find(u => u.id === bookingData.userId);
+
+        if (!clientUser || !clientUser.email) {
+            app.showToast("Este cliente não possui um e-mail cadastrado em seu perfil.");
+            return;
+        }
+
+        const btnRemind = document.getElementById('btn-remind-barber');
+        const btnOriginalHTML = btnRemind.innerHTML;
+        btnRemind.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Enviando...`;
+        btnRemind.disabled = true;
+        if (window.lucide) lucide.createIcons();
+
+        try {
+            let formattedDate = bookingData.date;
+            if(formattedDate.includes('-')) formattedDate = formattedDate.split('-').reverse().join('/');
+
+            await addDoc(collection(db, "fila_emails"), {
+                tipo: "manual",
+                emailDestino: clientUser.email,
+                nomeCliente: clientUser.name || bookingData.clientName,
+                dataAgendamento: formattedDate,
+                horaAgendamento: formatMinutesToTime(bookingData.startTime),
+                barbeiroNome: bookingData.barberName || loggedBarberName,
+                servico: bookingData.serviceName || "Serviço",
+                preco: bookingData.price || 0,
+                status: "pendente",
+                criadoEm: new Date().toISOString()
+            });
+            
+            app.showToast("Aviso enviado para a fila! O e-mail será disparado em segundos.");
+        } catch (error) {
+            console.error("Erro ao enfileirar e-mail:", error);
+            app.showToast("Ocorreu um erro ao tentar enviar o aviso.");
+        } finally {
+            btnRemind.innerHTML = btnOriginalHTML;
+            btnRemind.disabled = false;
+            if (window.lucide) lucide.createIcons();
+        }
+    },
+
     openPaymentModal: () => {
         if (app.currentEmployee?.isBlocked) return;
         
@@ -789,7 +879,14 @@ renderHistory: () => {
         const booking = app.appointments.find(a => a.id === id);
         if (!booking) return;
 
-        if (booking.date < getLocalYYYYMMDD(new Date())) {
+        // Se a data do banco for DD/MM/YYYY, formata para YYYY-MM-DD para comparar
+        let checkDate = booking.date;
+        if (checkDate.includes('/')) {
+            const [d, m, y] = checkDate.split('/');
+            checkDate = `${y}-${m}-${d}`;
+        }
+
+        if (checkDate < getLocalYYYYMMDD(new Date())) {
             alert("Este agendamento pertence ao passado e é imutável.");
             return;
         }
@@ -933,7 +1030,13 @@ renderHistory: () => {
         const booking = app.appointments.find(a => a.id === id);
         
         if (booking) {
-            if (booking.date < getLocalYYYYMMDD(new Date())) {
+            let checkDate = booking.date;
+            if (checkDate.includes('/')) {
+                const [d, m, y] = checkDate.split('/');
+                checkDate = `${y}-${m}-${d}`;
+            }
+
+            if (checkDate < getLocalYYYYMMDD(new Date())) {
                 alert("Não é possível excluir agendamentos passados.");
                 return;
             }

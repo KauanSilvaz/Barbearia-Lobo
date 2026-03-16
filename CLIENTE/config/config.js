@@ -586,6 +586,7 @@ const app = {
             logoUrl: document.getElementById('comp-logo').value, 
             mapsUrl: document.getElementById('comp-maps').value, 
             about: document.getElementById('comp-about').value,
+            terms: document.getElementById('comp-terms').value,
             phone: document.getElementById('comp-phone').value,
             email: document.getElementById('comp-email').value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -607,6 +608,7 @@ const app = {
                 if(document.getElementById('comp-logo')) document.getElementById('comp-logo').value = data.logoUrl || ""; 
                 if(document.getElementById('comp-maps')) document.getElementById('comp-maps').value = data.mapsUrl || ""; 
                 if(document.getElementById('comp-about')) document.getElementById('comp-about').value = data.about || "";
+                if(document.getElementById('comp-terms')) document.getElementById('comp-terms').value = data.terms || "";
                 if(document.getElementById('comp-phone')) document.getElementById('comp-phone').value = data.phone || "";
                 if(document.getElementById('comp-email')) document.getElementById('comp-email').value = data.email || "";
 

@@ -109,7 +109,7 @@
                 <h2 class="text-lg font-bold text-zinc-100" id="modal-title">Novo Agendamento</h2>
                 <button type="button" onclick="app.closeModal()" class="text-zinc-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <form id="appt-form" class="p-6 space-y-4" onsubmit="event.preventDefault(); app.saveAppt();">
+            <form id="appt-form" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar" onsubmit="event.preventDefault(); app.saveAppt();">
                 <input type="hidden" id="appt-id">
                 
                 <div class="mb-4">
@@ -127,6 +127,7 @@
                     <div id="new-client-container" class="hidden flex flex-col gap-3 bg-zinc-950/50 p-3 rounded-lg border border-zinc-800/50">
                         <input type="text" id="new-client-name" placeholder="Nome Completo" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 outline-none text-sm focus:border-amber-600 transition-colors">
                         <input type="tel" id="new-client-phone" placeholder="WhatsApp / Telefone" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 outline-none text-sm focus:border-amber-600 transition-colors">
+                        <input type="email" id="new-client-email" placeholder="E-mail (ex: cliente@email.com)" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 outline-none text-sm focus:border-amber-600 transition-colors">
                     </div>
                 </div>
                 
@@ -154,9 +155,12 @@
                 <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-zinc-800">
                     <button type="submit" id="btn-save" class="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-lg font-bold text-sm transition-colors">Salvar Agendamento</button>
                     
-                    <div id="edit-actions" class="grid grid-cols-2 gap-2 hidden">
-                        <button type="button" onclick="app.openPaymentModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i data-lucide="check" class="w-4 h-4"></i> Feito</button>
-                        <button type="button" onclick="app.deleteAppt()" class="bg-red-600 hover:bg-red-500 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
+                    <div id="edit-actions" class="flex flex-col gap-2 hidden">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="app.openPaymentModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i data-lucide="check" class="w-4 h-4"></i> Feito</button>
+                            <button type="button" onclick="app.deleteAppt()" class="bg-red-600 hover:bg-red-500 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
+                        </div>
+                        <button type="button" onclick="app.sendReminder()" id="btn-remind-barber" class="bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i data-lucide="bell" class="w-4 h-4"></i> Enviar Aviso</button>
                     </div>
                 </div>
             </form>
