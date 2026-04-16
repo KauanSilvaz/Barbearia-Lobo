@@ -88,12 +88,21 @@ const financeApp = {
         
         // Atualiza valor quando muda o serviço
         document.getElementById('pos-service').addEventListener('change', (e) => {
-            const service = posState.services.find(s => s.id === e.target.value);
-            posState.currentTotal = Number(service?.price) || 0;
-            document.getElementById('pos-total').textContent = `€ ${posState.currentTotal.toFixed(2).replace('.', ',')}`;
-            // Dispara recalculo de troco se estiver em dinheiro
-            document.getElementById('pos-received').dispatchEvent(new Event('input'));
-        });
+         const service = posState.services.find(s => s.id === e.target.value);
+    
+         if (service) {
+        // Se for promo, usa o promoPrice, senão usa o price normal
+        posState.currentTotal = (service.isPromo && service.promoPrice) 
+            ? Number(service.promoPrice) 
+            : Number(service.price);
+         } else {
+        posState.currentTotal = 0;
+        }
+    
+    document.getElementById('pos-total').textContent = `€ ${posState.currentTotal.toFixed(2).replace('.', ',')}`;
+    // Dispara recalculo de troco se estiver em dinheiro
+    document.getElementById('pos-received').dispatchEvent(new Event('input'));
+});
 
         // Alternância de métodos de pagamento no PDV
         const radios = document.getElementsByName('pos_method');
@@ -241,7 +250,11 @@ const financeApp = {
 
         // Preenche Serviços
         selectSvc.innerHTML = '<option value="" disabled selected>Selecione...</option>';
-        posState.services.forEach(s => selectSvc.add(new Option(`${s.name} (€${s.price})`, s.id)));
+        posState.services.forEach(s => {
+    // Verifica se é promo e se tem preço promocional, senão usa o preço normal
+    const precoAtivo = (s.isPromo && s.promoPrice) ? s.promoPrice : s.price;
+    selectSvc.add(new Option(`${s.name} (€${precoAtivo.toFixed(2).replace('.', ',')})`, s.id));
+    });
         
         // Preenche Barbeiros
         selectBrb.innerHTML = '<option value="" disabled selected>Selecione...</option>';

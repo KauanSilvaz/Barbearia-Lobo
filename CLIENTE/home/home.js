@@ -822,7 +822,7 @@ els.form.onsubmit = async (e) => {
             date: dbDate, // Salva no formato DD/MM/YYYY
             startTime: startMins,
             endTime: startMins + durationMins, 
-            price: service?.price || 0,
+            price: (service?.isPromo && service?.promoPrice) ? Number(service.promoPrice) : (Number(service?.price) || 0),
             serviceId: service.id,
             serviceName: service.name,
             clientName: clientName, 
@@ -952,8 +952,16 @@ let currentPaymentTotal = 0;
 function openPaymentModal(booking) {
     closeModal(); 
     
-    const service = state.services.find(s => s.id === booking.serviceId);
-    currentPaymentTotal = Number(booking.price) || Number(service?.price) || 0;
+const service = state.services.find(s => s.id === booking.serviceId);
+    
+    // Verifica qual é o preço atualizado ativo no momento do pagamento
+    const precoAtivo = (service?.isPromo && service?.promoPrice) 
+        ? Number(service.promoPrice) 
+        : Number(service?.price || 0);
+
+    // Usa o preço ativo. Se não achar (ex: serviço deletado), tenta usar o salvo no agendamento.
+    currentPaymentTotal = precoAtivo > 0 ? precoAtivo : (Number(booking.price) || 0);
+    // ...
     
     els.paymentBookingId.value = booking.id;
     els.paymentTotal.textContent = `€ ${currentPaymentTotal.toFixed(2).replace('.', ',')}`;

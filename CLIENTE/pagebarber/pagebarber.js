@@ -796,7 +796,7 @@ const app = {
             date: dbDate, // Salva no formato DD/MM/YYYY
             startTime: startMins,
             endTime: startMins + durationMins, 
-            price: service.price || 0,
+            price: (service?.isPromo && service?.promoPrice) ? Number(service.promoPrice) : (Number(service?.price) || 0),
             serviceId: service.id,
             serviceName: service.name,
             clientName: clientName, 
@@ -894,7 +894,14 @@ const app = {
         app.closeModal(); 
         
         const service = app.services.find(s => s.id === booking.serviceId);
-        app.currentPaymentTotal = Number(booking.price) || Number(service?.price) || 0;
+        
+        // Verifica qual é o preço atualizado ativo no momento do pagamento
+        const precoAtivo = (service?.isPromo && service?.promoPrice) 
+            ? Number(service.promoPrice) 
+            : Number(service?.price || 0);
+
+        // Usa o preço ativo. Se não achar (ex: serviço deletado), tenta usar o salvo no agendamento.
+        app.currentPaymentTotal = precoAtivo > 0 ? precoAtivo : (Number(booking.price) || 0);
         
         document.getElementById('payment-booking-id').value = booking.id;
         document.getElementById('payment-total').textContent = `€ ${app.currentPaymentTotal.toFixed(2).replace('.', ',')}`;
