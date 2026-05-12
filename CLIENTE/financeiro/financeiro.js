@@ -1,4 +1,5 @@
 /* financeiro.js - COMPLETO COM PDV (CAIXA), REAL-TIME SYNC, BLINDAGEM DE DATAS, EXCLUSÃO E CORES NO GRÁFICO */
+/* ATUALIZAÇÃO: Filtros de "Todo Período" e "Período Personalizado" adicionados */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, addDoc, query, orderBy, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -69,7 +70,40 @@ const financeApp = {
         document.getElementById('btn-hoje').addEventListener('click', (e) => financeApp.aplicarFiltroPeriodo('hoje', e.target));
         document.getElementById('btn-semana').addEventListener('click', (e) => financeApp.aplicarFiltroPeriodo('semana', e.target));
         document.getElementById('btn-mes').addEventListener('click', (e) => financeApp.aplicarFiltroPeriodo('mes', e.target));
-        
+
+        // ── NOVOS FILTROS ──────────────────────────────────────────────
+        document.getElementById('btn-todo').addEventListener('click', (e) => financeApp.aplicarFiltroPeriodo('todo', e.target));
+
+        document.getElementById('btn-personalizado').addEventListener('click', (e) => {
+            // Ativa o botão visualmente
+            financeApp.aplicarFiltroPeriodo('personalizado', e.target);
+            // Abre/fecha o painel de datas
+            const painel = document.getElementById('painel-personalizado');
+            const estaOculto = painel.classList.contains('hidden');
+            if (estaOculto) {
+                painel.classList.remove('hidden');
+                painel.classList.add('flex');
+            } else {
+                painel.classList.add('hidden');
+                painel.classList.remove('flex');
+            }
+        });
+
+        document.getElementById('btn-aplicar-periodo').addEventListener('click', () => {
+            const inicio = document.getElementById('data-inicio').value;
+            const fim = document.getElementById('data-fim').value;
+            if (!inicio || !fim) {
+                alert('Por favor, selecione as duas datas.');
+                return;
+            }
+            if (inicio > fim) {
+                alert('A data inicial não pode ser maior que a data final.');
+                return;
+            }
+            financeApp.aplicarFiltroPeriodoPersonalizado(inicio, fim);
+        });
+        // ── FIM NOVOS FILTROS ──────────────────────────────────────────
+
         document.getElementById('btn-exportar').addEventListener('click', financeApp.exportarExtratoPDF);
         
         document.getElementById('input-busca').addEventListener('input', (e) => {
@@ -88,21 +122,21 @@ const financeApp = {
         
         // Atualiza valor quando muda o serviço
         document.getElementById('pos-service').addEventListener('change', (e) => {
-         const service = posState.services.find(s => s.id === e.target.value);
-    
-         if (service) {
-        // Se for promo, usa o promoPrice, senão usa o price normal
-        posState.currentTotal = (service.isPromo && service.promoPrice) 
-            ? Number(service.promoPrice) 
-            : Number(service.price);
-         } else {
-        posState.currentTotal = 0;
-        }
-    
-    document.getElementById('pos-total').textContent = `€ ${posState.currentTotal.toFixed(2).replace('.', ',')}`;
-    // Dispara recalculo de troco se estiver em dinheiro
-    document.getElementById('pos-received').dispatchEvent(new Event('input'));
-});
+            const service = posState.services.find(s => s.id === e.target.value);
+        
+            if (service) {
+                // Se for promo, usa o promoPrice, senão usa o price normal
+                posState.currentTotal = (service.isPromo && service.promoPrice) 
+                    ? Number(service.promoPrice) 
+                    : Number(service.price);
+            } else {
+                posState.currentTotal = 0;
+            }
+        
+            document.getElementById('pos-total').textContent = `€ ${posState.currentTotal.toFixed(2).replace('.', ',')}`;
+            // Dispara recalculo de troco se estiver em dinheiro
+            document.getElementById('pos-received').dispatchEvent(new Event('input'));
+        });
 
         // Alternância de métodos de pagamento no PDV
         const radios = document.getElementsByName('pos_method');
@@ -220,9 +254,22 @@ const financeApp = {
             });
             selectExport.value = valorAtual || 'todos';
 
-            // Reaplica o filtro ativo (Hoje, Semana, Mês)
+            // Reaplica o filtro ativo (Hoje, Semana, Mês, Todo, Personalizado)
             const botaoAtivo = document.querySelector('.btn-periodo.bg-zinc-800') || document.getElementById('btn-mes');
-            if (botaoAtivo) botaoAtivo.click();
+            if (botaoAtivo) {
+                // Se o filtro personalizado estiver ativo, reaplica as datas salvas
+                if (botaoAtivo.id === 'btn-personalizado') {
+                    const inicio = document.getElementById('data-inicio').value;
+                    const fim = document.getElementById('data-fim').value;
+                    if (inicio && fim) {
+                        financeApp.aplicarFiltroPeriodoPersonalizado(inicio, fim);
+                    } else {
+                        botaoAtivo.click();
+                    }
+                } else {
+                    botaoAtivo.click();
+                }
+            }
         });
 
         // 2. Sincroniza dados auxiliares para o PDV e para as cores do gráfico
@@ -251,10 +298,10 @@ const financeApp = {
         // Preenche Serviços
         selectSvc.innerHTML = '<option value="" disabled selected>Selecione...</option>';
         posState.services.forEach(s => {
-    // Verifica se é promo e se tem preço promocional, senão usa o preço normal
-    const precoAtivo = (s.isPromo && s.promoPrice) ? s.promoPrice : s.price;
-    selectSvc.add(new Option(`${s.name} (€${precoAtivo.toFixed(2).replace('.', ',')})`, s.id));
-    });
+            // Verifica se é promo e se tem preço promocional, senão usa o preço normal
+            const precoAtivo = (s.isPromo && s.promoPrice) ? s.promoPrice : s.price;
+            selectSvc.add(new Option(`${s.name} (€${precoAtivo.toFixed(2).replace('.', ',')})`, s.id));
+        });
         
         // Preenche Barbeiros
         selectBrb.innerHTML = '<option value="" disabled selected>Selecione...</option>';
@@ -366,12 +413,23 @@ const financeApp = {
 
     // --- FUNÇÕES DE INTERFACE ---
     aplicarFiltroPeriodo: (periodo, botaoClicado) => {
+        // Remove estilo ativo de todos os botões de período
         document.querySelectorAll('.btn-periodo').forEach(btn => {
             btn.classList.remove('bg-zinc-800', 'text-white', 'shadow-sm');
             btn.classList.add('text-zinc-400');
         });
+        // Ativa o botão clicado
         botaoClicado.classList.add('bg-zinc-800', 'text-white', 'shadow-sm');
         botaoClicado.classList.remove('text-zinc-400');
+
+        // Fecha o painel personalizado ao trocar para qualquer outro filtro
+        if (periodo !== 'personalizado') {
+            const painel = document.getElementById('painel-personalizado');
+            if (painel) {
+                painel.classList.add('hidden');
+                painel.classList.remove('flex');
+            }
+        }
 
         const hoje = new Date();
         const dataHojeStr = hoje.toISOString().split('T')[0];
@@ -390,6 +448,13 @@ const financeApp = {
                 const mesAtual = dataHojeStr.substring(0, 7); 
                 return item.data.startsWith(mesAtual);
             }
+
+            // ── NOVOS FILTROS ──────────────────────────────────────────
+            if (periodo === 'todo') return true; // Exibe absolutamente tudo
+
+            if (periodo === 'personalizado') return true; // Carrega tudo enquanto aguarda o "Aplicar"
+            // ── FIM NOVOS FILTROS ──────────────────────────────────────
+
             return true;
         });
 
@@ -397,6 +462,18 @@ const financeApp = {
         financeApp.renderLedger(dadosExibidos);
         financeApp.atualizarGraficos(dadosExibidos);
     },
+
+    // ── NOVA FUNÇÃO: Filtro por intervalo de datas personalizado ──────
+    aplicarFiltroPeriodoPersonalizado: (inicio, fim) => {
+        // Filtra apenas registos cujas datas estão dentro do intervalo [inicio, fim]
+        // Funciona pois as datas estão no formato YYYY-MM-DD — comparação de string é válida
+        dadosExibidos = todosOsDados.filter(item => item.data >= inicio && item.data <= fim);
+
+        financeApp.atualizarCards(dadosExibidos);
+        financeApp.renderLedger(dadosExibidos);
+        financeApp.atualizarGraficos(dadosExibidos);
+    },
+    // ── FIM NOVA FUNÇÃO ───────────────────────────────────────────────
 
     atualizarCards: (dados) => {
         const total = dados.reduce((acc, curr) => acc + curr.valor, 0);

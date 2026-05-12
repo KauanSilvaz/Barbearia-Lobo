@@ -62,11 +62,26 @@
                     <i data-lucide="calculator" class="w-4 h-4"></i> Novo Lançamento
                 </button>
 
-                <div class="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800 w-full sm:w-auto overflow-x-auto custom-scrollbar order-2 sm:order-none">
-                    <button id="btn-hoje" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors whitespace-nowrap">Hoje</button>
-                    <button id="btn-semana" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors whitespace-nowrap">Semana</button>
-                    <button id="btn-mes" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm transition-colors whitespace-nowrap">Este Mês</button>
-                </div>
+<div class="flex flex-col gap-2 w-full sm:w-auto order-2 sm:order-none">
+    <div class="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800 overflow-x-auto custom-scrollbar">
+        <button id="btn-hoje" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors whitespace-nowrap">Hoje</button>
+        <button id="btn-semana" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors whitespace-nowrap">Semana</button>
+        <button id="btn-mes" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md bg-zinc-800 text-white shadow-sm transition-colors whitespace-nowrap">Este Mês</button>
+        <button id="btn-todo" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors whitespace-nowrap">Tudo</button>
+        <button id="btn-personalizado" class="btn-periodo flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors whitespace-nowrap flex items-center gap-1">
+            <i data-lucide="calendar-range" class="w-3 h-3"></i> Período
+        </button>
+    </div>
+
+    <!-- Painel de período personalizado (aparece só quando clicar em "Período") -->
+    <div id="painel-personalizado" class="hidden items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 animate-fadeIn">
+        <span class="text-xs text-zinc-500 whitespace-nowrap">De</span>
+        <input type="date" id="data-inicio" class="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-emerald-600">
+        <span class="text-xs text-zinc-500 whitespace-nowrap">até</span>
+        <input type="date" id="data-fim" class="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-emerald-600">
+        <button id="btn-aplicar-periodo" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs font-bold transition-colors whitespace-nowrap">Aplicar</button>
+    </div>
+</div>
 
                 <div class="hidden sm:block w-px h-6 bg-zinc-800 mx-1 order-none"></div>
                 
